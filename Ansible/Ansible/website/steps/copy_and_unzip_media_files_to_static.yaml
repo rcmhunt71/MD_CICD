@@ -1,0 +1,35 @@
+---
+
+# Copy the image media archive to the static hosts and expand host.
+# Archive the media files (media directory of web image) for transfer to Linux host
+
+# The following variables need to be provided via the commandline:
+#   NEW_VERSION - The new version being installed
+
+- name: Download and install the new version of WEB Code
+  hosts: web_static
+  gather_facts: no
+
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+
+  vars:
+    _MEDIA_ARCHIVE_FILE: "{{ NEW_VERSION }}_{{ MEDIA_ZIP_FILE }}"
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Copy file from master Ansible node to target Linux server and unzip
+  # ----------------------------------------------------------------------------------------
+  - debug:
+      msg:
+        - 'Source Archive: local_ansible_node:{{ LOCAL_TMP }}/{{ _MEDIA_ARCHIVE_FILE }}'
+        - 'Unarchive Destination: {{ inventory_hostname }}:{{ STATICS_MEDIA_DIR }}/'
+
+  - name: Unzip the archive file
+    unarchive:
+      src:  '{{ LOCAL_TMP }}/{{ _MEDIA_ARCHIVE_FILE }}'
+      dest: '{{ STATICS_MEDIA_DIR }}'
+      remote_src: no
+
+...
+

@@ -1,0 +1,53 @@
+---
+
+# The purpose of this playbook is archive files from one directory to another file and to 7z the structure into a single archive + delete archived files.
+
+- name: Create an archived file (.7z)
+  hosts: pcldevweb06
+  gather_facts: no
+  vars:
+    ARCHIVE_NAME: 'target_dirs_compressed.7z'
+  vars_files:
+    - vars/directory_info.yaml
+    - vars/zip_utility.yaml
+
+# ----------------------------------
+# Steps in playbook
+# ----------------------------------
+
+  tasks:
+  - name: Make the test target directory
+    win_file:
+      path: '{{ ARCHIVE_DIR }}'
+      state: directory
+
+  - name: Copy a series of target files to be archived (Optional, could archive source directly)
+    win_copy:
+      src: '{{ SRC_DIR }}/'
+      dest: '{{ ARCHIVE_DIR }}'
+      backup: no
+      remote_src: yes
+
+  # Archive the directory, store/display the archive listing
+  - name: Create a .7Z archive of the source files (destructive archival)
+    block:
+      - name: Archive (.7z) the target files (recursively) to a specific filename
+        win_shell: 'cmd /c "{{ ZIP_EXECUTABLE }}" a -bd -mx9 -sdel -r {{ ARCHIVE_NAME }} *'
+        args:
+          chdir: '{{ ARCHIVE_DIR }}'
+        register: ZIP_RESULTS
+
+      - name: "Get contents of archive"
+        win_shell: 'cmd /c "{{ ZIP_EXECUTABLE }}" l {{ ARCHIVE_NAME }}'
+        args:
+          chdir: '{{ ARCHIVE_DIR }}'
+        register: ZIP_LISTING
+
+      - debug:
+          msg:
+            - 'CMD: {{ ZIP_LISTING.cmd }}'
+            - 'FAILED? {{ ZIP_LISTING.failed }}'
+            - '{{ ZIP_LISTING.stdout_lines }}'
+
+...
+

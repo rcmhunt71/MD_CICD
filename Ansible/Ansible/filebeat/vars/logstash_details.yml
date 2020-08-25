@@ -1,0 +1,12 @@
+---
+
+# Logstash Host details
+logstash_server: 172.17.0.199
+logstash_port_nginx: 5045
+logstash_port_price: 5145
+logstash_port_los: 5245
+logstash_port_apache: 5345
+logstash_port_syslog: 5445
+
+...
+

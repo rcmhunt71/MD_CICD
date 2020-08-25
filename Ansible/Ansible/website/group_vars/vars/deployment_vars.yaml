@@ -1,0 +1,69 @@
+---
+
+# Web Deployment external variables
+
+# --------------------------------------------------------
+# WEB HOST DIRECTORIES (WINDOWS)
+# -----------------------------------------------------
+# Actual targets (when not testing):
+# WEBSOURCE DIR:         C:\
+# WEBSITES DIR:          C:\Websites
+# WEBSITES ARCHIVE DIR:  D:\Websites
+# --------------------------------------------------------
+WEB_SOURCE_DIR: C:\Users\rhunt\test
+WEB_WEBSITES_DIR: '{{ WEB_SOURCE_DIR }}\websites'
+WEB_MEDIA_DIR: '{{ WEB_WEBSITES_DIR }}\media'
+WEB_WEBSITES_SITE_DIR: '{{ WEB_MEDIA_DIR }}\site'
+WEB_ARCHIVE_DIR: '{{ WEB_SOURCE_DIR }}\backup'
+WEB_ZIP_MIN_SIZE_BYTES: 50000
+
+# --------------------------------------------------------
+# WEB STATICS DIRECTORIES (LINUX)
+# --------------------------------------------------------
+# Actual targets (when not testing):
+# STATICS SOURCE DIR:         /var/www
+# STATICS WEBSITES DIR:       /var/www/websites
+# STATICS WEBSITE MEDIA DIR:  /var/www/websites/media
+# STATICS MEDIA SITE DIR:     /var/www/websites/media/site
+# --------------------------------------------------------
+STATICS_BASE_DIR: /home/rhunt/nginx
+STATICS_WEBSITES_DIR: '{{ STATICS_BASE_DIR }}/websites'
+STATICS_MEDIA_DIR: '{{ STATICS_WEBSITES_DIR }}/media'
+STATICS_MEDIA_SITE_DIR: '{{ STATICS_MEDIA_DIR }}/site'
+STATICS_ARCHIVE_DIR: '{{ STATICS_BASE_DIR }}/archive'
+STATICS_CUSTOM_FILES:
+  - my.css
+  - my.js
+STATICS_ARCHIVE_FORMAT: gz
+
+# FOR TESTING PURPOSES
+STATICS_ARCHIVE_FILE: '{{ STATICS_BASE_DIR }}/archive.zip'
+
+# --------------------------------------------------------
+# LOCAL (ANSIBLE MASTER NODE) DIRECTORIES
+# --------------------------------------------------------
+LOCAL_TMP: /tmp
+
+# --------------------------------------------------------
+# WINDOWS APACHE SERVICE NAMES
+# --------------------------------------------------------
+WINDOWS_SERVICES:
+  - Apache2.2-2Zend
+  - Apache2.4
+LINUX_WEB_SERVICE: apache2
+
+# --------------------------------------------------------
+# BUILD IMAGE ARCHIVE - BASE FILE NAME
+# --------------------------------------------------------
+MEDIA_ZIP_FILE: media.static.zip
+
+# --------------------------------------------------------
+# BUILD IMAGE ARCHIVE - BASE FILE NAME
+# --------------------------------------------------------
+WEB_DB_TABLE: all
+WEB_DB_USER: TBD
+WEB_DB_PASSWORD: '{{ VAULT_DB_PASSWORD }}'
+WEB_DB_BACKUP_DIR: 'D:\Backup'
+
+...
+

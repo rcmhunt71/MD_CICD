@@ -1,0 +1,120 @@
+- project:
+    name: MD_Build_Job_definition_template
+    version:
+      !include: versions.yaml.inc
+    environment:
+      !include: environments.yaml.inc
+    build_timeout: 10
+
+    views:
+      - 'MD Build Jobs'
+      
+    jobs:
+      - "Build-MD-{version}-{environment}"
+
+- view-template:
+    name: "MD Build Jobs"
+    description: "Mortgage Director Build Jobs"
+    view-type: list
+    regex: 'Build-MD-.*'
+
+- job-template:
+    name: "Build-MD-{version}-{environment}"
+
+    scm:
+      - svn:
+          workspaceupdater: wipeworkspace
+          repos:
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{environment}/{version}"
+             basedir: .
+             repo-depth: infinity
+             ignore-externals: true
+             viewvc-url: fisheye.pclender.com
+
+    project-type: freestyle
+    defaults: global
+    description: "Mortgage Director Release Version {version} Builds in {environment} environment"
+    disabled: False
+    display-name: "{environment} {version} MD Builds"
+    concurrent: False
+    quiet-period: 0
+    block-downstream: False
+    block-upstream: False
+    retry-count: 3
+    build-discarder: 
+      daysToKeep: 3
+      numToKeep: 3
+
+    properties:
+      - authorization:
+          "LOS Development":
+             - job-build
+             - job-cancel
+             - job-read
+             - job-status
+             - job-workspace
+
+    wrappers:
+      - build-user-vars
+      - build-name:
+          name: '${{PROJECT_DISPLAY_NAME}} #${{BUILD_NUMBER}} SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}'
+      - workspace-cleanup:
+          include:
+            - "*.*"
+          dirmatch: true
+      - env-script:
+          # ##################################################
+          # Requires the Jenkins Environment Script Plugin.
+          # Source and execute python script
+          # Would need to install python on the build server
+          # ##################################################
+          script-content: ''
+          script-type: batch-script
+      - timestamps
+      - timeout:
+          timeout: "{build_timeout}"
+          type: no-activity
+          fail: true
+          write-description: "Build timed out with no activity after {build_timeout} minutes"
+      
+    builders:
+      - shell: |
+          echo "Full Name: $BUILD_USER"
+          echo "First Name: $BUILD_USER_FIRST_NAME"
+          echo "Last Name: $BUILD_USER_LAST_NAME"
+          echo "User ID: $BUILD_USER_ID"
+          exit(0)
+       
+      - batch: "%WORKSPACE%\\BuildTools\\ResourceFileCreator.exe"
+      - batch: "%DELPHI% %WORKSPACE%\\components\\D10\\TMS Component Pack\\tmsdXE9group.grouproj"
+      - batch: "%DELPHI% %WORKSPACE%\\Server\\PCLServer.groupproj /p:config=Release"
+      - batch: "%DELPHI% %WORKSPACE%\\Client\\PCLServer.groupproj /p:config=Release"
+      - batch: "%DELPHI% %WORKSPACE%\\PRICEENG\\PRICENG.groupproj /p:config=Release"
+      - batch: "%DELPHI% %WORKSPACE%\\Tools\\PCLServerTools.groupproj /p:config=Release"
+      - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /dev_{version}"
+      - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\ThinIHM.exe"
+      - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\PCLLoader.exe"
+      - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\IHMADO.dll"
+
+    publishers:
+      - jira
+      - email-ext:
+          content-type: default
+          subject: '$DEFAULT_SUBJECT'
+          body: '${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}.'
+          body: '{environment} Build - #{version}'
+
+          # --------------------------------------------------
+          # Figure how to store names in external file
+          # --------------------------------------------------
+          recipients: development@pclender.com, pallas.austria@fiserv.com, fiona.rice@fiserv.com, paolo.manarang@fiserv.com, MDLOSDevelopers@fiserv.com, christopher.brown1@Fiserv.com, libni.ortizvalles@fiserv.com
+
+          reply-to: '$DEFAULT_REPLYTO'
+          attach-build-log: true
+          compress-log: true
+          presend-script: '$DEFAULT_PRESEND_SCRIPT'
+          postsend-script: '$DEFAULT_POSTEND_SCRIPT'
+          failure: true
+          success: true
+          prebuild: true
+ 

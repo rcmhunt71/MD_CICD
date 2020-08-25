@@ -1,0 +1,29 @@
+---
+
+# This playbook backups all mysql databases into separate files.
+
+# The following variables need to be provided via the commandline:
+#   OLD_VERSION - The version to be backed up and replaced.
+
+- name: Backup web mysql database (Windows)
+  hosts: web_db
+
+  vars_files:
+     ../group_vars/vars/deployment_vars.yaml
+
+  vars:
+    _BACKUP_SQL_FILE:  '{{ WEB_DB_BACKUP_DIR }}\{{ WEB_DB_TABLE }}_{{ OLD_VERSION }}.sql'
+
+  tasks:
+    - name: Create a backup of the web database
+      mysql_db:
+        name: '{{ WEB_DB_TABLE }}'
+        state: dump
+        target: '{{ _BACKUP_SQL_FILE }}'
+        login_host: localhost
+        login_user: '{{ WEB_DB_USER }}'
+        login_password: '{{ WEB_DB_PASSWORD }}'
+      become: yes
+      become_method: sudo
+
+...

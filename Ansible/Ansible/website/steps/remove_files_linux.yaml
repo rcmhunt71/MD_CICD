@@ -1,0 +1,68 @@
+---
+
+# Remove all instances of my.js and my.css from the system
+
+- name: Remove Mortgage Director specific JavaScript and CSS files
+  hosts: web_static
+  gather_facts: no
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+
+  tasks:
+  - name: Create a pattern string from list.
+    set_fact:
+      _TARGET_FILES: '{{ STATICS_CUSTOM_FILES | join(",") }}'
+
+  - debug:
+      msg:
+        'Target Files: {{ _TARGET_FILES }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Check target dir exists (otherwise this fails silently)
+  # ----------------------------------------------------------------------------------------
+  - name: Check target dir exists
+    stat:
+      path: '{{ STATICS_MEDIA_SITE_DIR }}'
+    register: _TARGET_DIR_EXISTS
+
+  # ----------------------------------------------------------------------------------------
+  # Find all files matching the following specifications
+  # ----------------------------------------------------------------------------------------
+  - name: Get list of directories in source directory. (Archiving does not remove the directories)
+    find:
+      path: '{{ STATICS_MEDIA_SITE_DIR }}'
+      recurse: true
+      patterns: '{{ _TARGET_FILES }}'
+    register: _TARGET_FILE_INSTANCES
+
+  - debug:
+      msg: '{{ item.path }}'
+    loop: '{{ _TARGET_FILE_INSTANCES.files }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Delete the identified files
+  # ----------------------------------------------------------------------------------------
+  - name: Delete matching files found in media directory
+    file:
+      path: '{{ item.path }}'
+      state: absent
+    with_items: '{{ _TARGET_FILE_INSTANCES.files }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Check that all files matching the specifications were deleted
+  # ----------------------------------------------------------------------------------------
+  - name: Check that all files matching the specifications were deleted.
+    find:
+      path: '{{ STATICS_MEDIA_SITE_DIR }}'
+      recurse: true
+      patterns: '{{ _TARGET_FILES }}'
+    register: _TARGET_FILE_INSTANCES
+
+  - debug:
+      msg:
+      - '{{ _TARGET_FILE_INSTANCES }} files that still exist:'
+      - '{{ item.path }}'
+    loop: '{{ _TARGET_FILE_INSTANCES.files }}'
+
+...
+

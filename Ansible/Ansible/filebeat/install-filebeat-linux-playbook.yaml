@@ -1,0 +1,49 @@
+---
+
+- name: Install filebeat, if necessary
+  hosts: pcldevapache
+  remote_user: chunt
+  become: yes
+  become_method: sudo
+  gather_facts: True
+  tasks:
+    - debug: var=hostvars[inventory_hostname]['ansible_all_ipv4_addresses']
+
+    - name: Upgrade filebeat to latest version (or install if not present)
+      register: filebeat_installed
+      ignore_errors: True
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name: filebeat
+
+    - debug: var=filebeat_installed
+
+    - name: Add the ES GPG key to apt-key
+      shell:
+        cmd: wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+        warn: False
+      when: filebeat_installed is failed
+
+    - name: Update APT transport HTTPS package
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name: apt-transport-https
+      when: filebeat_installed is failed
+
+
+    - name: Save the repo definition to the elastic-7.x.list
+      shell:
+        cmd: echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+      when: filebeat_installed is failed
+
+
+    - name: Update APT repo to catch latest changes
+      apt:
+        update_cache: yes
+        name: filebeat
+      when: filebeat_installed is failed
+
+...
+

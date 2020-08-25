@@ -1,0 +1,86 @@
+---
+
+# - BASE_DIR: C:\Users\rhunt\test
+# - SRC_DIR:  "{{ BASE_DIR }}\SRC"
+# - DEST_DIR: "{{ BASE_DIR }}\DEST"
+# - NEW_DIR:  "{{ BASE_DIR }}\create"
+# - NEW_FILE_1: "{{ NEW_DIR }}\test_1.dat"
+# - NEW_FILE_2: "{{ NEW_DIR }}\test_2.dat"
+
+
+- name: Create File Structure on Remote Server
+  hosts: pcldevweb06
+  vars_files:
+    - vars/directory_info.yaml
+
+  tasks:
+  - name: Create Directory (./create) on Remote Server
+    win_file:
+      path: '{{ NEW_DIR }}'
+      state: directory
+
+  - name: Get Directory listing in DEST directory
+    win_shell: 'dir {{ DEST_DIR }}'
+    register: dest_dir_contents
+
+  - debug:
+      var: dest_dir_contents
+
+  - name: Create File (test.dat) In New Directory on Remote Server
+    win_file:
+      path: '{{ NEW_FILE_1 }}'
+      state: touch
+
+  - name: Get Directory listing in DEST directory
+    win_shell: 'dir {{ NEW_DIR }}'
+    register: dest_dir_contents
+
+  - debug:
+      var: dest_dir_contents
+
+  - name: Create File (test_del.dat) In New Directory on Remote Server
+    win_file:
+      path: '{{ NEW_FILE_2 }}'
+      state: touch
+
+  - name: Get Directory listing in DEST directory
+    win_shell: 'dir {{ NEW_DIR }}'
+    register: dest_dir_contents
+
+  - debug:
+      var: dest_dir_contents
+
+  - name: Delete File (test_del.dat) In Newly Created Directory on Remote Server
+    win_file:
+      path: '{{ NEW_FILE_2 }}'
+      state: absent
+
+  - name: Get Directory listing in DEST directory
+    win_shell: 'dir {{ NEW_DIR }}'
+    register: dest_dir_contents
+
+  - debug:
+      var: dest_dir_contents
+
+  - name: Delete New Directory
+    win_file:
+      path: '{{ NEW_DIR }}'
+      state: absent
+
+  - name: Get Directory listing in DEST directory
+    win_shell: 'dir {{ DEST_DIR }}'
+    register: dest_dir_contents
+
+  - debug:
+      var: dest_dir_contents
+
+  - name: Get Disk Facts
+    win_disk_facts:
+
+  - debug:
+      var: ansible_facts.disks[0].size
+
+  - debug:
+      var: ansible_facts.disks[0].serial_number
+
+...

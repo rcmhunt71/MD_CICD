@@ -1,0 +1,94 @@
+---
+
+# Download ZIP file from FTP and extract/copy the source to the proper systems and directories
+
+# The following variables need to be provided via the commandline:
+#   NEW_VERSION - The version to be downloaded and deployed.
+#   ENV - The environment to leverage (prod|uat|staging|qa|dev)
+
+- name: Download and install the new version of WEB Code
+  hosts: web_hosts
+  gather_facts: no
+
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+    - ../group_vars/vars/ftp_server.yaml
+    - ../../OS/windows/vars/zip_utility.yaml
+
+  vars:
+    _ENV: '{{ ENV | upper }}'
+    _NEW_VERSION_WEB_ZIP: '{{ NEW_VERSION }}.7z'
+    _USE_DEFAULT_CREDS: "{{ 'yes' if  _ENV == 'UAT' or  _ENV == 'PROD' else 'no' }}"
+    _FTP_SERVER_NAME: "{{ 'FTP_SERVER_' + _ENV }}"
+    _FTP_SERVER_IP: "{{ vars[_FTP_SERVER_NAME] }}"
+    _FTP_URL: "{{'ftp://' + _FTP_SERVER_IP + '/' + FTP_SOURCE_DIR + '/' + _NEW_VERSION_WEB_ZIP }}"
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Download (via FTP) the new version ZIP archive
+  # ----------------------------------------------------------------------------------------
+  - debug:
+      msg:
+      - 'NEW_VERSION: {{ NEW_VERSION }}'
+      - 'FTP_SERVER_NAME: {{ _FTP_SERVER_NAME }}'
+      - 'ENVIRONMENT: {{ _ENV }}'
+      - 'FTP SERVER: {{ _FTP_SERVER_IP }}'
+      - 'FTP URL: {{ _FTP_URL }}'
+      - 'USE DEFAULT CREDS: {{ _USE_DEFAULT_CREDS }}'
+
+#  - name: FTP the specified version to disk
+#  - win_get_url:
+#      url: '{{ _FTP_URL }}'
+#      dest: {{ WEB_SITES_DIR }}
+#      use_default_credential: '{{ _USE_DEFAULT_CREDS }}'
+
+  # ----------------------------------------------------------------------------------------
+  # TEMP - Copy file to target directory (mimics FTP result)
+  # ----------------------------------------------------------------------------------------
+  - name: TEMPORARY - Move template to directory, acts as if FTP occurred.
+    win_copy:
+      src: '{{ WEB_ARCHIVE_DIR }}\{{ _NEW_VERSION_WEB_ZIP }}'
+      dest: '{{ WEB_WEBSITES_DIR }}\{{ _NEW_VERSION_WEB_ZIP }}'
+      backup: no
+      remote_src: yes
+
+  # ----------------------------------------------------------------------------------------
+  # Check that destination archive file exists. If it does not exist, FAIL.
+  # ----------------------------------------------------------------------------------------
+  - name: Check destination file (FTP'd) exists. If it does not exist, FAIL.
+    win_stat:
+      path: '{{ WEB_WEBSITES_DIR }}\{{ _NEW_VERSION_WEB_ZIP }}'
+    register: _FTP_FILE
+
+  - name: FAIL if the FTP'd file does not exist.
+    fail:
+      msg: |
+        The FTP'd file '{{ WEB_WEBSITES_DIR }}\{{ _NEW_VERSION_WEB_ZIP }}' does not
+        exist or was not found in the expected directory.
+    when: not _FTP_FILE.stat.exists
+
+  # ----------------------------------------------------------------------------------------
+  # Unpack the downloaded ZIP file.
+  # ----------------------------------------------------------------------------------------
+  - name: Unpack the zip in the target directory
+    win_shell: 'cmd /c "{{ ZIP_EXECUTABLE }}" x -bd -y {{ _NEW_VERSION_WEB_ZIP }}'
+    args:
+      chdir: '{{ WEB_WEBSITES_DIR }}'
+    register: _UNZIP_RESULTS
+
+  - debug:
+      msg:
+        - "CMD: {{ _UNZIP_RESULTS.cmd }}"
+        - "FAILED? {{ _UNZIP_RESULTS.failed }}"
+        - "{{ _UNZIP_RESULTS.stdout_lines }}"
+
+  # ----------------------------------------------------------------------------------------
+  # Delete the ZIP file (the next deployment would unnecessarily archive it into the zip
+  # ----------------------------------------------------------------------------------------
+  - name: Delete the zip file
+    win_file:
+      path: '{{ WEB_WEBSITES_DIR }}\{{ _NEW_VERSION_WEB_ZIP }}'
+      state: absent
+
+...
+

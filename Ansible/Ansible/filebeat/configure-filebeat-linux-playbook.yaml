@@ -1,0 +1,31 @@
+---
+
+- hosts: pcldevapache
+  remote_user: chunt
+  become: yes
+  become_method: sudo
+  gather_facts: True
+
+  vars_files:
+    - vars/logstash_details.yml
+
+  vars:
+    log_type: APACHE
+    log_path: /var/logs/apache2/*
+
+  tasks:
+    - name: Define logstash port
+      set_fact: logstash_port={{vars['logstash_port_'+ log_type|lower] }}
+
+    - debug: var=[log_type]
+    - debug: var=[logstash_port]
+
+    - name: Copy template over to target server
+      template:
+        src: templates/filebeat.cfg.j2
+        dest: /etc/filebeat/filebeat.yml
+        owner: root
+        mode: 0644
+
+...
+

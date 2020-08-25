@@ -1,0 +1,66 @@
+---
+
+# Detect and Restart the windows services
+- name: 'Restart the {{ WINDOWS_SERVICES }} Daemon'
+  hosts: web_hosts
+  gather_facts: no
+
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Check which services are installed.
+  # There different "flavors" possible:  see _SVC_NAMES definition for list
+  # ----------------------------------------------------------------------------------------
+  - name: 'Check which {{ WINDOWS_SERVICES }} services installed.'
+    win_service:
+      name: '{{ item }}'
+    with_items: '{{ WINDOWS_SERVICES }}'
+    ignore_errors: yes
+    register: _SERVICES
+
+  - debug:
+      msg:
+      - '{{ item.item }} --> Service exists? {{ item.exists }}'
+    with_items: '{{ _SERVICES.results }}'
+
+
+  # ----------------------------------------------------------------------------------------
+  # Restart the target services.
+  # ----------------------------------------------------------------------------------------
+  - name: 'Restart existing services'
+    win_service:
+      name: item.name
+#      status: restarted
+    with_items: '{{ _SERVICES.results }}'
+    when: item.exists
+
+  # ----------------------------------------------------------------------------------------
+  # Verify the installed services are active.
+  # Fail if any detected services are not "running".
+  # ----------------------------------------------------------------------------------------
+  # Get the status of running services.
+  - name: 'Check if the services is now active'
+    win_service:
+      name: item.name
+    with_items: '{{ _SERVICES.results }}'
+    when: item.exists
+    register: _UPDATED_STATUS
+
+  # Show the status of all existing services.
+  - debug:
+      msg:
+      - '{{ item.item.item }} - {{ item.item.state }}'
+    with_items: '{{ _UPDATED_STATUS.results }}'
+    when: item.item.exists
+
+  # Fail if not running.
+  - name: Fail if any existing services are not "running"
+    fail:
+      msg: '{item.item.name} is not ACTIVE'
+    with_items: '{{ _UPDATED_STATUS.results }}'
+    when:  item.item.exists and item.item.state != 'running'
+
+...
+

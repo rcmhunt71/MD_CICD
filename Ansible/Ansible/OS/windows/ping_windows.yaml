@@ -1,0 +1,14 @@
+---
+
+- name: Ping
+  hosts: pcldevweb06
+
+  tasks:
+  - name: ping
+    win_ping:
+
+
+# Getting error: Please see https://serverfault.com/questions/799096/kerberos-not-working-cant-find-client-principal-in-cache-collection
+
+...
+

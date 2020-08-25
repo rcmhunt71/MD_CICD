@@ -1,0 +1,33 @@
+---
+
+- name: Destructively zip files from a specified directory to a zip file and move to an archival directory
+  hosts: pcldevapache
+  remote_user: chunt
+  become: yes
+  become_method: sudo
+  gather_facts: no
+
+  vars:
+    TARGET_DIR: /temp/rhunt/temp_1
+
+  tasks:
+    - name: Check if target directory exists
+      stat:
+        path: '{{ TARGET_DIR }}'
+      register: TARGET_FILE_EXISTS
+
+    - name: Compress directory /home/rhunt/temp/ to /tmp
+      archive:
+        path: '{{ TARGET_DIR }}'
+        dest: /tmp/archived_files.gz
+        owner: rhunt
+        format: gz
+        remove: yes
+      register: COMPRESSION_RESULT
+      when: TARGET_FILE_EXISTS.stat.exists
+
+    - debug:
+        var: COMPRESSION_RESULT.arcroot
+      when: TARGET_FILE_EXISTS.stat.exists
+
+...

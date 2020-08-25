@@ -1,0 +1,57 @@
+---
+
+# Restart the requested service
+
+- name: 'Restart the {{ _SERVICE }} service'
+  hosts: web_static
+  gather_facts: no
+
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+  vars:
+    _SERVICE: '{{ LINUX_WEB_SERVICE }}'
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Restart the service
+  # ----------------------------------------------------------------------------------------
+  - name: 'Restart the {{ _SERVICE }} service + error checking'
+    block:
+      - name: 'Restart the {{ _SERVICE }} service'
+        service:
+          name: '{{ _SERVICE }}'
+          state: restarted
+        register: _SERVICE_RESTART
+    become: yes
+    become_method: sudo
+
+    rescue:
+      - debug:
+          msg: '{{ _SERVICE_RESTART.msg }}'
+        when: _SERVICE_RESTART.failed
+
+      - name: 'Check the {{ _SERVICE }} service status issues with systemctl'
+        command: systemctl status '{{ _SERVICE }}.service'
+        register: _SYSCTL
+        ignore_errors: yes
+
+      - debug:
+          msg: '{{ _SYSCTL.stdout_lines }}'
+
+      - name: 'Unable to start {{ _SERVICE }}. FAIL'
+        fail:
+          msg: 'Unable to start the {{ _SERVICE }} service'
+
+
+  # ----------------------------------------------------------------------------------------
+  # Verify the service is active
+  # ----------------------------------------------------------------------------------------
+  - name: 'Verify {{ _SERVICE }} is up and active'
+    service_facts:
+
+  - debug:
+      msg:
+      - 'APACHE2 STATUS: {{ ansible_facts.services.{{ _SERVICE }}.state }}'
+
+...
+

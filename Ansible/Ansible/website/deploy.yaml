@@ -1,0 +1,70 @@
+---
+
+#2345678911234567892123456789312345678941234567895123456789612345678971234567898
+
+# This is the Ansible PLAYBOOK framework for deploying the WEB aspects of
+# Mortgage Director.
+
+# ----------------------------------------------------------------------------
+# REQUIRED CLI ARGS:
+# - "OLD_VERSION":  "Major.Minor.Hotfix.Build"
+# - "NEW_VERSION":  "MAjor.Minor.Hotfix.Build"
+# - "ENV":          <name of environment: PROD|UAT|STAGING|QA|DEV>
+# ----------------------------------------------------------------------------
+- name: Get web server information
+  hosts: web_servers
+  gather_facts: yes
+  vars_files:
+    - vars/deployment_vars.yaml
+
+
+# NOTE: Requires SQLDUMP utility to be installed on the DB server
+#       https://dev.mysql.com/doc/refman/5.7/en/mysqldump.html
+#
+# 1) Backup the current version
+# 1a) Backup the pclender database (Windows)
+# ---------------------------------------------------------------------------
+# CREATE PLAYBOOK FOR THE FOLLOWING (using checklist from prod):
+#   A. Backup pclender database on PCLUATWEBDB01 (10.0.102.21)
+#        a. Log into SQLYog
+#        b. Right click on the pclender database and choose Backup/Export
+#        c. Backup Database as SQL Dump
+#        d. Select Structure & Data
+#        e. Export to D:\Backup\ and choose an appropriate file name
+#        f. Export
+# - import_playbook: steps/backup_db.yaml
+
+
+# 1b) Backup the primary Apache Website  (Windows Server)
+#     Uses --extra-vars: "OLD_VERSION"
+- import_playbook: steps/backup_primary_website.yaml
+
+
+# 1c) Backup the static content (Linux Server)
+#     Uses --extra-vars: "OLD_VERSION"
+- import_playbook: steps/backup_static_web_content.yaml
+
+
+# ALL DONE ON THE PRIMARY WEB SERVER (Windows Server)
+# 2) Get the file {version}.7z from ftp server
+# 3) Extract the file on the primary server
+# 4) Copy contents to primary server
+#    Uses --extra-vars: "NEW VERSION", "ENV"
+- import_playbook: steps/get_and_expand_zip_on_primary.yaml
+
+
+# 5) Copy the media folder to /var/www/websites (Linux server)
+#    Uses --extra-vars:  "NEW_VERSION"
+- import_playbook: steps/archive_and_dl_media_files.yam
+- import_playbook: steps/copy_and_unzip_media_files_to_static.yaml
+
+
+# 6) Restart the Apache services (Linux and Windows Servers)
+- import_playbook: steps/restart_service_linux.yaml
+- import_playbook: steps/restart_services_windows.yaml
+
+
+# 7) Delete all my.js & my.css from /var/www/websites/site folder
+- import_playbook: steps/remove_files_linux.yaml
+
+...

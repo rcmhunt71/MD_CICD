@@ -1,0 +1,95 @@
+---
+
+# Archive the media files (media directory of web image) for transfer to Linux host
+
+# The following variables need to be provided via the commandline:
+#   NEW_VERSION - The new version being installed
+
+- name: Download and install the new version of WEB Code
+  hosts: web_hosts
+  gather_facts: no
+
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+    - ../../OS/windows/vars/zip_utility.yaml
+
+  vars:
+    _MEDIA_ARCHIVE_FILE: "{{ NEW_VERSION }}_{{ MEDIA_ZIP_FILE }}"
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Archive the media directory into media.zip ZIP file.
+  # ----------------------------------------------------------------------------------------
+  - debug:
+      msg:
+        - 'MEDIA ZIP FILE: {{ _MEDIA_ARCHIVE_FILE }}'
+
+  - name: Archive the media directory into _MEDIA_ARCHIVE_FILE
+    win_shell: 'cmd /c "{{ ZIP_EXECUTABLE }}" a -bd -mx9 -r {{ _MEDIA_ARCHIVE_FILE }}'
+    args:
+      chdir: '{{ WEB_MEDIA_DIR  }}'
+    register: _ZIP_RESULTS
+
+  - name: Get ZIP file info
+    win_stat:
+      path: '{{ WEB_MEDIA_DIR  }}\{{ _MEDIA_ARCHIVE_FILE }}'
+    register: _ZIP_FILE_STAT
+
+  - name: FAIL if ZIP file does not exist
+    fail:
+      msg:
+        The ZIP file '{{ WEB_MEDIA_DIR  }}\{{ _MEDIA_ARCHIVE_FILE }}' does not exist.
+    when: not _ZIP_FILE_STAT.stat.exists
+
+  - debug:
+      msg:
+        - "CMD: {{ _ZIP_RESULTS.cmd }}"
+        - "FAILED? {{ _ZIP_RESULTS.failed }}"
+        - "{{ _ZIP_RESULTS.stdout_lines }}"
+
+  # ----------------------------------------------------------------------------------------
+  # Copy archived MEDIA file to archive (for copying and avoiding collisions with
+  # current image, when it gets backed up during future upgrades)
+  # ----------------------------------------------------------------------------------------
+  - name: Copy archived MEDIA file to archive dir (to avoid collisions with installed image)
+    win_copy:
+      src: '{{ WEB_MEDIA_DIR }}\{{ _MEDIA_ARCHIVE_FILE }}'
+      dest: '{{ WEB_ARCHIVE_DIR }}\{{ _MEDIA_ARCHIVE_FILE }}'
+      backup: no
+      remote_src: yes
+
+  # ----------------------------------------------------------------------------------------
+  # Delete the ZIP file (the next deployment would unnecessarily archive it into the zip)
+  # ----------------------------------------------------------------------------------------
+  - name: Delete the zip file from the current image installation
+    win_file:
+      path: '{{ WEB_MEDIA_DIR }}\{{ _MEDIA_ARCHIVE_FILE }}'
+      state: absent
+
+  # ----------------------------------------------------------------------------------------
+  # Copy the archived file to the Ansible master node for copying to Linux static web host
+  # ----------------------------------------------------------------------------------------
+  - name: Copy file to Ansible master node (to be transferred to static content web host)
+    # Copying from Windows to Linux (master ansible node)
+    fetch:
+      src: '{{ WEB_ARCHIVE_DIR }}\{{ _MEDIA_ARCHIVE_FILE }}'
+      dest: '{{ LOCAL_TMP }}/'
+      flat: yes
+      fail_on_missing: yes
+
+  - debug:
+      msg:
+        - 'Copied ZIP to Ansible node.'
+        - 'Source: {{ WEB_ARCHIVE_DIR}}\{{ _MEDIA_ARCHIVE_FILE }}'
+        - 'Destination: Master Node: {{ LOCAL_TMP }}/{{ _MEDIA_ARCHIVE_FILE }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Delete the source ZIP file after transferring
+  # ----------------------------------------------------------------------------------------
+  - name: Delete the zip file from the current image installation
+    win_file:
+      path: '{{ WEB_ARCHIVE_DIR }}\{{ _MEDIA_ARCHIVE_FILE }}'
+      state: absent
+
+...
+

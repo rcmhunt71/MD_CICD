@@ -1,0 +1,109 @@
+---
+
+# Archive/backup the current website static content to an archive directory on a LINUX server
+
+# The following variables need to be provided via the commandline:
+#   OLD_VERSION - The version to be backed up and replaced.
+
+- name: Archive the static web files
+  hosts: web_static
+  gather_facts: no
+  vars_files:
+    - ../group_vars/vars/deployment_vars.yaml
+  vars:
+    _ARCHIVE_FILE_NAME: '{{ OLD_VERSION }}_STATICS_BACKUP.{{ STATICS_ARCHIVE_FORMAT }}'
+
+  tasks:
+  # ----------------------------------------------------------------------------------------
+  # Display the OLD_VERSION variable (provided by CLI)
+  # ----------------------------------------------------------------------------------------
+  - debug:
+      msg:
+      - 'OLD_VERSION: {{ OLD_VERSION }}'
+      - 'ARCHIVE_FILE_NAME: {{ _ARCHIVE_FILE_NAME }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Check if the ARCHIVE ZIP FILE already exists in the archive dir;
+  # If so, DELETE IT (for now).
+  # ----------------------------------------------------------------------------------------
+  - name: Check for the existance of the archived zip file
+    stat:
+      path: '{{ STATICS_ARCHIVE_DIR }}/{{ _ARCHIVE_FILE_NAME }}'
+    register: _ARCHIVE_EXISTS
+
+  - name: Delete existing ZIP file
+    file:
+      path: '{{ STATICS_ARCHIVE_DIR }}/{{ _ARCHIVE_FILE_NAME }}'
+      state: absent
+    when: _ARCHIVE_EXISTS.stat.exists
+
+  # ----------------------------------------------------------------------------------------
+  # Create a non-destructive archive the existing website statics and copy to
+  # STATICS_ARCHIVE_DIR
+  # ----------------------------------------------------------------------------------------
+  - name: Archive the existing website static directory
+    archive:
+      path: '{{ STATICS_MEDIA_DIR }}'
+      dest: '{{ STATICS_ARCHIVE_DIR }}/{{ _ARCHIVE_FILE_NAME }}'
+      format: '{{ STATICS_ARCHIVE_FORMAT }}'
+      remove: no
+      owner: '{{ ansible_user }}'
+      mode: 0644
+    register: _STATIC_ZIP_FILE
+
+  # ----------------------------------------------------------------------------------------
+  # Log information about the archived file
+  # ----------------------------------------------------------------------------------------
+  - name: Get archived file stat information
+    stat:
+      path: '{{ STATICS_ARCHIVE_DIR }}/{{ _ARCHIVE_FILE_NAME }}'
+    register: _STATIC_ZIP_FILE_INFO
+
+  - name: If archive does not exist, FAIL.
+    fail:
+      msg: |
+        The archive file ({{ STATICS_ARCHIVE_DIR }}/{{_ARCHIVE_FILE_NAME}} does not
+        exist.
+    when: not _STATIC_ZIP_FILE_INFO.stat.exists
+
+  - debug:
+      msg:
+      - 'Copied to: {{ _STATIC_ZIP_FILE.dest }}'
+      - 'Size: {{ _STATIC_ZIP_FILE_INFO.stat.size }} bytes'
+      - 'Archive Contents:'
+      - '{{ _STATIC_ZIP_FILE.archived }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Deletion during the zipping process does not remove the files & directories.
+  # Get a list of the directories in the source directory
+  # ----------------------------------------------------------------------------------------
+  - name: Get list of directories in source directory.
+    find:
+      path: '{{ STATICS_MEDIA_SITE_DIR }}/'
+      hidden: true
+      recurse: true
+      file_type: directory
+    register: _TARGET_DEL_DIRS
+
+  - name: Get list of files in source directory.
+    find:
+      path: '{{ STATICS_MEDIA_SITE_DIR }}/'
+      hidden: true
+      recurse: false
+      file_type: file
+    register: _TARGET_DEL_FILES
+
+  - debug:
+      msg: '{{ item.path }}'
+    loop: '{{ _TARGET_DEL_DIRS.files }}'
+
+  # ----------------------------------------------------------------------------------------
+  # Delete the identified directories (and files)
+  # ----------------------------------------------------------------------------------------
+  - name: Delete files directories found in source directory
+    file:
+      path: '{{ item.path }}'
+      state: absent
+    with_items: '{{ _TARGET_DEL_DIRS.files + _TARGET_DEL_FILES.files }}'
+
+...
