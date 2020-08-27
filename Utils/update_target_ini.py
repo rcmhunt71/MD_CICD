@@ -10,38 +10,34 @@ class CLIArgs:
     ADD = 'add'
     REMOVE = 'remove'
     UPDATE = 'update'
+    VALIDATE = 'validate'
 
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument("-o", "--outfile", help="Name of file to write output. DEFAULT: Overwrite ini file.",
+        self.parser.add_argument("-o", "--outfile", help="Name of file to write output. "
+                                                         "DEFAULT: Overwrite the source file.",
                                  default=None, type=str)
         self.parser.add_argument("-l", "--list", help="List environments defined in the ini file.",
                                  action='store_true')
         self.parser.add_argument("-d", "--debug", help="Enable debug logging.",
                                  action='store_true')
 
-        self.subparser = self.parser.add_subparsers(dest='file_action', help="INI File Operations.")
-        self.add_new_env_args()
-        self.add_update_args()
-        self.add_remove_args()
+        sub_parser = self.parser.add_subparsers(dest='file_action', help="INI File Operations.")
+        for action in [self.ADD, self.UPDATE, self.REMOVE]:
+            self._add_options(verb=action, sub_parser=sub_parser)
+        self.add_validate(sub_parser=sub_parser)
 
         self.args = self.parser.parse_args()
 
-    def add_new_env_args(self):
-        key = self.ADD
-        add = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
-        add.add_argument('env', help=f"The name of environment to {key}.")
+    def _add_options(self, verb, sub_parser):
+        parser = sub_parser.add_parser(verb, help=f"{verb.lower().capitalize()} an entry to file.")
+        parser.add_argument('env', help=f"The name of environment to {verb.lower()}.")
+        if verb != self.REMOVE:
+            parser.add_argument('values', nargs='+', help=f"The 'key:value' pairs of the options to {verb.lower()}.")
 
-    def add_update_args(self):
-        key = self.UPDATE
-        update = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
-        update.add_argument('env', help=f"The name of environment to {key.lower()}.")
-        update.add_argument('values', nargs='+', help=f"The 'key:value' pairs of the options to {key.lower()}.")
-
-    def add_remove_args(self):
-        key = self.REMOVE
-        remove = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
-        remove.add_argument('env', help=f"The name of environment to {key.lower()}.")
+    def add_validate(self, sub_parser):
+        verb = self.VALIDATE
+        sub_parser.add_parser(verb, help=f"{verb.lower().capitalize()} INI file format.")
 
 
 class IniFile:
@@ -117,7 +113,14 @@ class TargetIniFile(IniFile):
 
         return sections_match
 
-    def remove_section(self, section_name):
+    def remove_section(self, section_name: str) -> bool:
+        """
+        Remove a section from the INI file
+
+        :param section_name: Name of the section
+
+        :return: Bool: Successfully removed or not
+        """
         sections = self.get_target_sections()
         if section_name not in sections:
             msg = f"Requested section to be removed: '{section_name}' was not found in the defined sections."
@@ -129,34 +132,53 @@ class TargetIniFile(IniFile):
 
         self.config.remove_section(section_name)
 
+        result = section_name not in self.get_target_sections()
+        if result:
+            self.log.info(f"Validation: Environment '{section_name}' has been removed.")
+        else:
+            self.log.error(f"Validation: Environment '{section_name}' has NOT been removed.")
+            print(f"Environment '{section_name}' has NOT been removed.")
+
         self.write_file()
-        self.log.info(f"Environment '{section_name}' has been removed.")
+        return result
 
-    def update_section(self, section_name: str, option: str, value: typing.Any) -> None:
+    def update_section(self, section_name: str, option: str, value: typing.Any) -> bool:
         """
-        Updates a single option within a specified section.
+        Update a section to the ini file.
 
-        :param section_name: Name of section to update.
-        :param option: Name of option to update.
-        :param value: Value to use to update.
+        :param section_name: Name of the section/environment to add
+        :param option: Keyword to add
+        :param value: Value to associate with the keyword/option
 
-        :return: None
-
+        :return: Bool: Value successfully set (True) or not set (False)
         """
-        self.log.info(f"Changing ENV: {section_name}: Updating '{option}' to '{value}'")
+        self.log.info(f"Update ENV '{section_name}': Updating '{option}' to '{value}'")
         self.config.set(section=section_name, option=option.lower(), value=value)
         self.log.debug(f"Value check: ENV: {section_name} Option: '{option.lower()}' --> "
                        f"Value: '{self.config.get(section=section_name, option=option)}'")
+        return self.config.get(section=section_name, option=option.lower()) == value
 
-    def add_section(self, **kwargs) -> None:
+    def add_section(self, section_name: str, option: str, value: typing.Any) -> bool:
         """
         Add a section to the ini file.
 
-        :param kwargs: Key/Value pairs to added to the section/environment
+        :param section_name: Name of the section/environment to add
+        :param option: Keyword to add
+        :param value: Value to associate with the keyword/option
 
-        :return: None
+        :return: Bool: Value successfully set (True) or not set (False)
         """
-        pass
+        self.log.info(f"Add ENV '{section_name}': Adding '{option}' to '{value}'")
+
+        if section_name not in self.config:
+            self.config[section_name] = {option.lower(): value}
+        else:
+            self.config.set(section=section_name, option=option.lower(), value=value)
+
+        self.log.debug(f"Value check: ENV: {section_name} Option: '{option.lower()}' --> "
+                       f"Value: '{self.config.get(section=section_name, option=option)}'")
+
+        return self.config.get(section=section_name, option=option.lower()) == value
 
     def get_target_sections(self, sort: bool = False) -> typing.List[str]:
         """
@@ -306,7 +328,7 @@ if __name__ == '__main__':
     log.debug(f"CLI Args: {cli.args}")
     target = TargetIniFile(filespec=ini_file, outfile=cli.args.outfile)
     if cli.args.list:
-        # Do no print the zeroth (first) element [Core] because it is not an environment.
+        # NOTE: Do no print the zeroth (first) element [Core] because it is not an environment.
         print(target.get_target_sections(sort=True)[1:])
         exit()
 
@@ -321,10 +343,25 @@ if __name__ == '__main__':
             target.update_section(section_name=cli.args.env, option=option.lower(), value=value)
         target.write_file()
 
-    else:
-        print(f"All targets defined: {target.verify_targets_are_defined()}")
-        print(f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}")
-        target.write_file(updated_ini_file)
+    elif cli.args.file_action == cli.ADD:
+        log.info(f"Adding {cli.args.env}: {cli.args.values}")
+        for kv_pair in cli.args.values:
+            option, value = kv_pair.split(':')
+            target.add_section(section_name=cli.args.env, option=option.lower(), value=value)
+        env_was_added = cli.args.env in target.get_target_sections()
+        log.debug(f"Section {cli.args.env} was added? {env_was_added}")
+        if not env_was_added:
+            log.error(f"Section {cli.args.env} was NOT added.")
+        target.write_file()
+
+    elif cli.args.file_action == cli.VALIDATE:
+        log.info(f"Validating {os.path.abspath(ini_file)}")
+        msgs = [f"All targets defined: {target.verify_targets_are_defined()}",
+                f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}"]
+
+        for msg in msgs:
+            log.info(msg)
+            print(msg)
 
     log.info("Execution complete.")
     log.info(border)
