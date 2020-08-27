@@ -16,20 +16,20 @@ class CLIArgs:
                                  default=None, type=str)
         self.parser.add_argument("-l", "--list", help="List environments defined in the ini file.",
                                  action='store_true')
-        self.parser.add_argument("-d", "--debug", help="Enable debug logging",
+        self.parser.add_argument("-d", "--debug", help="Enable debug logging.",
                                  action='store_true')
 
-        self.subparser = self.parser.add_subparsers(dest='file_action', help="Ini File Actions")
+        self.subparser = self.parser.add_subparsers(dest='file_action', help="INI File Operations.")
         self.add_update_args()
         self.add_remove_args()
 
         self.args = self.parser.parse_args()
 
     def add_update_args(self):
-        self.subparser.add_parser(self.ADD, help="Add an entry to file")
+        self.subparser.add_parser(self.ADD, help="Add an entry to file.")
 
     def add_remove_args(self):
-        remove = self.subparser.add_parser(self.REMOVE, help="Remove an entry to file")
+        remove = self.subparser.add_parser(self.REMOVE, help="Remove an entry to file.")
         remove.add_argument('env', help="The name of environment to remove from the ini file.")
 
 
