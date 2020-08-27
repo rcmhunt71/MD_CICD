@@ -12,9 +12,11 @@ class CLIArgs:
 
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument("-f", "--file", help="Name of file to write output. DEFAULT: Overwrite ini file.",
+        self.parser.add_argument("-o", "--outfile", help="Name of file to write output. DEFAULT: Overwrite ini file.",
                                  default=None, type=str)
         self.parser.add_argument("-l", "--list", help="List environments defined in the ini file.",
+                                 action='store_true')
+        self.parser.add_argument("-d", "--debug", help="Enable debug logging",
                                  action='store_true')
 
         self.subparser = self.parser.add_subparsers(dest='file_action', help="Ini File Actions")
@@ -56,7 +58,7 @@ class IniFile:
         config = configparser.ConfigParser()
         if os.path.exists(self.file):
             config.read(self.file)
-            self.log.debug(f"Parsed {self.file} successfully.")
+            self.log.debug(f"Parsed '{os.path.abspath(self.file)}' successfully.")
         else:
             self.log.error(f"Specified log file ('{self.file}') was not found.")
         return config
@@ -110,14 +112,14 @@ class TargetIniFile(IniFile):
             msg = f"Requested section to be removed: '{section_name}' was not found in the defined sections."
             self.log.warning(msg)
             self.log.debug(f"Defined sections: {sections}")
-            self.log.info(f"Environment: {section_name} has NOT been removed.")
+            self.log.info(f"Environment '{section_name}' has NOT been removed.")
             print(msg)
             return False
 
         self.config.remove_section(section_name)
 
         self.write_file()
-        self.log.info(f"Environment: {section_name} has been removed.")
+        self.log.info(f"Environment '{section_name}' has been removed.")
 
     def get_target_sections(self, sort: bool = False) -> typing.List[str]:
         """
@@ -188,16 +190,20 @@ class TargetIniFile(IniFile):
         self.config._sections = dict([(section, self.config._sections[section]) for section in reordered_sections])
 
         # The complexity of the code below (updating internal dictionaries is due to configparser storing all options
-        # as lowercase, but the original file is u
+        # as lowercase, but the original file is uppercase, so additional logic is required to update the options
+        # to uppercase.
+        # https://docs.python.org/3/library/configparser.html#customizing-parser-behaviour
 
         # Sort each section's options alphabetically, and uppercase all option keywords
-        # (ConfigParser does not maintain the case, so this restores it)
+        # ConfigParser does not maintain the case, so this restores it.
+        self.log.debug("Updating all section names to be uppercase.")
         for section in self.config._sections:
             self.config._sections[section] = dict([(name.upper(), value) for name, value in
                                                    sorted(self.config._sections[section].items(), key=lambda t: t[0])])
 
         # Update the CORE:TARGET string with the sections in the same order as stored in the file.
-        new_target_str = ", ".join(reordered_sections)
+        self.log.debug(f"Updating '{self.CORE}:{self.TARGETS}' to list all defined environments.")
+        new_target_str = ", ".join(reordered_sections[1:])
         self.config.set(self.CORE, self.TARGETS, new_target_str)
         self.config._sections[self.CORE] = dict([(name.upper(), value) for name, value in
                                                  self.config._sections[self.CORE].items()])
@@ -247,24 +253,31 @@ class TargetIniFile(IniFile):
 if __name__ == '__main__':
     ini_file = "./targets.ini"
     updated_ini_file = "./targets.rewrite.ini"
-
-    log_level = logging.DEBUG
-    logging.basicConfig(filename='update_target_ini.log', level=log_level)
-    log = logging.getLogger()
+    log_file = "update_target_ini.log"
 
     cli = CLIArgs()
+
+    log_level = logging.DEBUG if cli.args.debug else logging.INFO
+    logging.basicConfig(filename=log_file, level=log_level,
+                        format='[%(asctime)s.%(msecs)03d]:[%(levelname)-7s]:[%(name)s.%(funcName)s]: %(message)s',
+                        datefmt="%m/%d/%YT%H:%M:%S")
+    log = logging.getLogger()
+    log.info("Execution starting...")
+
     log.debug(f"CLI Args: {cli.args}")
-    target = TargetIniFile(filespec=ini_file, outfile=cli.args.file)
+    target = TargetIniFile(filespec=ini_file, outfile=cli.args.outfile)
     if cli.args.list:
-        # Do no print the first element (Core) because it is not an environment.
+        # Do no print the zeroth (first) element [Core] because it is not an environment.
         print(target.get_target_sections(sort=True)[1:])
         exit()
 
     if cli.args.file_action == cli.REMOVE:
-        log.info(f"Removing environment: {cli.args.env}")
+        log.info(f"Removing environment: '{cli.args.env}'")
         target.remove_section(cli.args.env)
 
     else:
         print(f"All targets defined: {target.verify_targets_are_defined()}")
         print(f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}")
         target.write_file(updated_ini_file)
+
+    log.info("Execution complete.")
