@@ -9,6 +9,7 @@ import typing
 class CLIArgs:
     ADD = 'add'
     REMOVE = 'remove'
+    UPDATE = 'update'
 
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -20,17 +21,27 @@ class CLIArgs:
                                  action='store_true')
 
         self.subparser = self.parser.add_subparsers(dest='file_action', help="INI File Operations.")
+        self.add_new_env_args()
         self.add_update_args()
         self.add_remove_args()
 
         self.args = self.parser.parse_args()
 
+    def add_new_env_args(self):
+        key = self.ADD
+        add = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
+        add.add_argument('env', help=f"The name of environment to {key}.")
+
     def add_update_args(self):
-        self.subparser.add_parser(self.ADD, help="Add an entry to file.")
+        key = self.UPDATE
+        update = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
+        update.add_argument('env', help=f"The name of environment to {key.lower()}.")
+        update.add_argument('values', nargs='+', help=f"The 'key:value' pairs of the options to {key.lower()}.")
 
     def add_remove_args(self):
-        remove = self.subparser.add_parser(self.REMOVE, help="Remove an entry to file.")
-        remove.add_argument('env', help="The name of environment to remove from the ini file.")
+        key = self.REMOVE
+        remove = self.subparser.add_parser(key, help=f"{key.lower().capitalize()} an entry to file.")
+        remove.add_argument('env', help=f"The name of environment to {key.lower()}.")
 
 
 class IniFile:
@@ -121,9 +132,35 @@ class TargetIniFile(IniFile):
         self.write_file()
         self.log.info(f"Environment '{section_name}' has been removed.")
 
+    def update_section(self, section_name: str, option: str, value: typing.Any) -> None:
+        """
+        Updates a single option within a specified section.
+
+        :param section_name: Name of section to update.
+        :param option: Name of option to update.
+        :param value: Value to use to update.
+
+        :return: None
+
+        """
+        self.log.info(f"Changing ENV: {section_name}: Updating '{option}' to '{value}'")
+        self.config.set(section=section_name, option=option.lower(), value=value)
+        self.log.debug(f"Value check: ENV: {section_name} Option: '{option.lower()}' --> "
+                       f"Value: '{self.config.get(section=section_name, option=option)}'")
+
+    def add_section(self, **kwargs) -> None:
+        """
+        Add a section to the ini file.
+
+        :param kwargs: Key/Value pairs to added to the section/environment
+
+        :return: None
+        """
+        pass
+
     def get_target_sections(self, sort: bool = False) -> typing.List[str]:
         """
-        Get all defined sections that are not the CORE section
+        Get all defined sections that are not the CORE section.
 
         :param sort: (bool) sort the environment names.
 
@@ -254,6 +291,7 @@ if __name__ == '__main__':
     ini_file = "./targets.ini"
     updated_ini_file = "./targets.rewrite.ini"
     log_file = "update_target_ini.log"
+    border = "=" * 120
 
     cli = CLIArgs()
 
@@ -262,6 +300,7 @@ if __name__ == '__main__':
                         format='[%(asctime)s.%(msecs)03d]:[%(levelname)-7s]:[%(name)s.%(funcName)s]: %(message)s',
                         datefmt="%m/%d/%YT%H:%M:%S")
     log = logging.getLogger()
+    log.info(border)
     log.info("Execution starting...")
 
     log.debug(f"CLI Args: {cli.args}")
@@ -275,9 +314,17 @@ if __name__ == '__main__':
         log.info(f"Removing environment: '{cli.args.env}'")
         target.remove_section(cli.args.env)
 
+    elif cli.args.file_action == cli.UPDATE:
+        log.info(f"Updating {cli.args.env}: {cli.args.values}")
+        for kv_pair in cli.args.values:
+            option, value = kv_pair.split(':')
+            target.update_section(section_name=cli.args.env, option=option.lower(), value=value)
+        target.write_file()
+
     else:
         print(f"All targets defined: {target.verify_targets_are_defined()}")
         print(f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}")
         target.write_file(updated_ini_file)
 
     log.info("Execution complete.")
+    log.info(border)
