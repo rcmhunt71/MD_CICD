@@ -6,15 +6,42 @@ import re
 import typing
 
 
+class CLIArgs:
+    ADD = 'add'
+    REMOVE = 'remove'
+
+    def __init__(self):
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument("-f", "--file", help="Name of file to write output. DEFAULT: Overwrite ini file.",
+                                 default=None, type=str)
+        self.parser.add_argument("-l", "--list", help="List environments defined in the ini file.",
+                                 action='store_true')
+
+        self.subparser = self.parser.add_subparsers(dest='file_action', help="Ini File Actions")
+        self.add_update_args()
+        self.add_remove_args()
+
+        self.args = self.parser.parse_args()
+
+    def add_update_args(self):
+        self.subparser.add_parser(self.ADD, help="Add an entry to file")
+
+    def add_remove_args(self):
+        remove = self.subparser.add_parser(self.REMOVE, help="Remove an entry to file")
+        remove.add_argument('env', help="The name of environment to remove from the ini file.")
+
+
 class IniFile:
-    def __init__(self, filespec: str) -> None:
+    def __init__(self, filespec: str, outfile: typing.Optional[str] = None) -> None:
         """
         Basic Ini File Constructor
 
         :param filespec: Filespec (path and name) of INI file to read.
+        :param outfile: Name of file to write config. (If none, original filespec will be overwritten)
 
         """
         self.file = filespec
+        self.outfile = outfile or self.file
         self.log = logging.getLogger(self.__class__.__name__)
         self.config = self.read_file()
         self.log.debug(f"IniFile '{self.__class__.__name__}' has been instantiated.")
@@ -60,7 +87,7 @@ class TargetIniFile(IniFile):
 
         # Get list of all registered sections in CORE:TARGETS, and a list of sections in the INI file.
         core_targets = set(self.config.get(self.CORE, self.TARGETS).split(','))
-        targets_sections = set(self._get_target_sections())
+        targets_sections = set(self.get_target_sections())
         sections_match = core_targets == targets_sections
         self.log.debug(f"[{self.CORE}][{self.TARGETS}] and defined sections match 1:1? {sections_match}")
 
@@ -70,21 +97,41 @@ class TargetIniFile(IniFile):
             unregistered_sections = targets_sections - core_targets
             if undefined_sections:
                 self.log.error(f"The following sections are registered in {self.CORE} but are not defined "
-                               f"as sections: {', '.join(undefined_sections)}")
+                               f"as sections: {', '.join(undefined_sections)}.")
             if unregistered_sections:
                 self.log.error(f"The following sections are defined but are not registered in {self.CORE}: "
-                               f"{', '.join(unregistered_sections)}")
+                               f"{', '.join(unregistered_sections)}.")
 
         return sections_match
 
-    def _get_target_sections(self) -> typing.List[str]:
+    def remove_section(self, section_name):
+        sections = self.get_target_sections()
+        if section_name not in sections:
+            msg = f"Requested section to be removed: '{section_name}' was not found in the defined sections."
+            self.log.warning(msg)
+            self.log.debug(f"Defined sections: {sections}")
+            self.log.info(f"Environment: {section_name} has NOT been removed.")
+            print(msg)
+            return False
+
+        self.config.remove_section(section_name)
+
+        self.write_file()
+        self.log.info(f"Environment: {section_name} has been removed.")
+
+    def get_target_sections(self, sort: bool = False) -> typing.List[str]:
         """
-        Get all defined sections that are not the CORE section.
+        Get all defined sections that are not the CORE section
+
+        :param sort: (bool) sort the environment names.
 
         :return: List of relevant sections.
 
         """
-        return [section for section in self.config.sections() if section != self.CORE]
+        sections = [section for section in self.config.sections() if section != self.CORE]
+        if sort:
+            sections = self._sort_version(sections)
+        return sections
 
     def verify_all_sections_are_fully_defined(self) -> bool:
         """
@@ -103,7 +150,7 @@ class TargetIniFile(IniFile):
         overall_match = None
         expected_options = set(self.config.options(self.TEMPLATE_SECTION))
         self.log.debug(f'Check ini file sections are fully defined, using {self.TEMPLATE_SECTION} as the template.')
-        for section in self._get_target_sections():
+        for section in self.get_target_sections():
             options = set(self.config.options(section))
             all_options_match = options == expected_options
 
@@ -132,13 +179,16 @@ class TargetIniFile(IniFile):
         :return: None
 
         """
-        filename = filename or self.file
+        filename = filename or self.outfile
 
         # Determine proper section order
         reordered_sections = self._sort_version(self.config.sections())
 
         # Update config using sorted section order
         self.config._sections = dict([(section, self.config._sections[section]) for section in reordered_sections])
+
+        # The complexity of the code below (updating internal dictionaries is due to configparser storing all options
+        # as lowercase, but the original file is u
 
         # Sort each section's options alphabetically, and uppercase all option keywords
         # (ConfigParser does not maintain the case, so this restores it)
@@ -147,14 +197,17 @@ class TargetIniFile(IniFile):
                                                    sorted(self.config._sections[section].items(), key=lambda t: t[0])])
 
         # Update the CORE:TARGET string with the sections in the same order as stored in the file.
-        new_target_str = ", ".join(self.config.sections()[1:])
+        new_target_str = ", ".join(reordered_sections)
         self.config.set(self.CORE, self.TARGETS, new_target_str)
-        self.config.remove_option(self.CORE, self.TARGETS.lower())
+        self.config._sections[self.CORE] = dict([(name.upper(), value) for name, value in
+                                                 self.config._sections[self.CORE].items()])
 
         # Write the file
         with open(filename, "w") as INI:
             self.config.write(INI)
-        self.log.info(f"Wrote output to {os.path.abspath(filename)}")
+        msg = f"Wrote output to {os.path.abspath(filename)}."
+        self.log.info(msg)
+        print(msg)
 
     def _sort_version(self, version_list: typing.List[str]) -> typing.List[str]:
         """
@@ -194,11 +247,24 @@ class TargetIniFile(IniFile):
 if __name__ == '__main__':
     ini_file = "./targets.ini"
     updated_ini_file = "./targets.rewrite.ini"
+
     log_level = logging.DEBUG
-
     logging.basicConfig(filename='update_target_ini.log', level=log_level)
+    log = logging.getLogger()
 
-    target = TargetIniFile(ini_file)
-    print(f"All targets defined: {target.verify_targets_are_defined()}")
-    print(f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}")
-    target.write_file(updated_ini_file)
+    cli = CLIArgs()
+    log.debug(f"CLI Args: {cli.args}")
+    target = TargetIniFile(filespec=ini_file, outfile=cli.args.file)
+    if cli.args.list:
+        # Do no print the first element (Core) because it is not an environment.
+        print(target.get_target_sections(sort=True)[1:])
+        exit()
+
+    if cli.args.file_action == cli.REMOVE:
+        log.info(f"Removing environment: {cli.args.env}")
+        target.remove_section(cli.args.env)
+
+    else:
+        print(f"All targets defined: {target.verify_targets_are_defined()}")
+        print(f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}")
+        target.write_file(updated_ini_file)
