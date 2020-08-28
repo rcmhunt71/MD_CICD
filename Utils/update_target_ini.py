@@ -13,7 +13,16 @@ class CLIArgs:
     VALIDATE = 'validate'
 
     def __init__(self):
+        """
+        CLI Arg Parser: Constructor
+        """
+
         self.parser = argparse.ArgumentParser()
+
+        # Global required options
+        self.parser.add_argument("source_file", help="Name of file to read. ", type=str)
+
+        # Global Optional Options
         self.parser.add_argument("-o", "--outfile", help="Name of file to write output. "
                                                          "DEFAULT: Overwrite the source file.",
                                  default=None, type=str)
@@ -22,20 +31,36 @@ class CLIArgs:
         self.parser.add_argument("-d", "--debug", help="Enable debug logging.",
                                  action='store_true')
 
+        # Add subparsers (options for specific operations)
         sub_parser = self.parser.add_subparsers(dest='file_action', help="INI File Operations.")
         for action in [self.ADD, self.UPDATE, self.REMOVE]:
             self._add_options(verb=action, sub_parser=sub_parser)
         self.add_validate(sub_parser=sub_parser)
 
+        # Read the args
         self.args = self.parser.parse_args()
 
-    def _add_options(self, verb, sub_parser):
+    def _add_options(self, verb: str, sub_parser: typing.Any) -> None:
+        """
+        Generalized routine to add options to a provided argparse.ArgumentParser.subparser.
+
+        :param verb: Subparser purpose (add, remove, update)
+        :param sub_parser: instantiated subparser (see argparse.ArgumentParser.add_subparsers())
+
+        :return: None
+        """
         parser = sub_parser.add_parser(verb, help=f"{verb.lower().capitalize()} an entry to file.")
         parser.add_argument('env', help=f"The name of environment to {verb.lower()}.")
         if verb != self.REMOVE:
             parser.add_argument('values', nargs='+', help=f"The 'key:value' pairs of the options to {verb.lower()}.")
 
-    def add_validate(self, sub_parser):
+    def add_validate(self, sub_parser: typing.Any) -> None:
+        """
+        Defines the 'validate' arg sub-option.
+        :param sub_parser: instantiated subparser (see argparse.ArgumentParser.add_subparsers())
+
+        :return: None
+        """
         verb = self.VALIDATE
         sub_parser.add_parser(verb, help=f"{verb.lower().capitalize()} INI file format.")
 
@@ -139,7 +164,6 @@ class TargetIniFile(IniFile):
             self.log.error(f"Validation: Environment '{section_name}' has NOT been removed.")
             print(f"Environment '{section_name}' has NOT been removed.")
 
-        self.write_file()
         return result
 
     def update_section(self, section_name: str, option: str, value: typing.Any) -> bool:
@@ -310,13 +334,11 @@ class TargetIniFile(IniFile):
 
 
 if __name__ == '__main__':
-    ini_file = "./targets.ini"
-    updated_ini_file = "./targets.rewrite.ini"
-    log_file = "update_target_ini.log"
     border = "=" * 120
-
     cli = CLIArgs()
 
+    # Set up logging
+    log_file = f"{'.'.join(cli.args.source_file.split('.')[:-1])}.log"
     log_level = logging.DEBUG if cli.args.debug else logging.INFO
     logging.basicConfig(filename=log_file, level=log_level,
                         format='[%(asctime)s.%(msecs)03d]:[%(levelname)-7s]:[%(name)s.%(funcName)s]: %(message)s',
@@ -326,15 +348,21 @@ if __name__ == '__main__':
     log.info("Execution starting...")
 
     log.debug(f"CLI Args: {cli.args}")
-    target = TargetIniFile(filespec=ini_file, outfile=cli.args.outfile)
+
+    # Parse the target INI file
+    target = TargetIniFile(filespec=cli.args.source_file, outfile=cli.args.outfile)
+
+    # Based on the global options selected...
     if cli.args.list:
         # NOTE: Do no print the zeroth (first) element [Core] because it is not an environment.
         print(target.get_target_sections(sort=True)[1:])
         exit()
 
+    # Based on the sub-parser selected...
     if cli.args.file_action == cli.REMOVE:
         log.info(f"Removing environment: '{cli.args.env}'")
         target.remove_section(cli.args.env)
+        target.write_file()
 
     elif cli.args.file_action == cli.UPDATE:
         log.info(f"Updating {cli.args.env}: {cli.args.values}")
@@ -355,7 +383,7 @@ if __name__ == '__main__':
         target.write_file()
 
     elif cli.args.file_action == cli.VALIDATE:
-        log.info(f"Validating {os.path.abspath(ini_file)}")
+        log.info(f"Validating {os.path.abspath(cli.args.source_file)}")
         msgs = [f"All targets defined: {target.verify_targets_are_defined()}",
                 f"All targets are fully defined: {target.verify_all_sections_are_fully_defined()}"]
 
