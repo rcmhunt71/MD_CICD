@@ -1,0 +1,111 @@
+- project:
+- project:
+    name: MD_Deploy_Job_definition_template
+    views:
+      - 'MD Deploy Jobs'
+    jobs:
+      - "Deploy-MD"
+
+- view-template:
+    name: "MD Deploy Jobs"
+    description: "Mortgage Director Deployment Jobs  "
+    view-type: list
+    regex: 'Deploy-MD.*'
+
+- job-template:
+    name: "Deploy-MD"
+    allow_empty_variables: true
+
+    parameters:
+#     Requires Validating String Plugin
+      - validating-string:
+          name: version
+          default: "20.7.0.0"
+          description: "The LOS version to deploy: X.Y.Z.a"
+          regex: \d+\.\d+\.\d+\.\d+
+          msg: "Version number must be 4 digits: X.Y.Z.a"
+      - validating-string:
+          name: build
+          default: '00000'
+          description: "Specific build version: nnnnn - Use '00000' to use the latest build."
+          regex: \d\d\d\d\d
+          msg: "Build number must be a 5 digit number."
+      - string:
+          name: environment
+          description: "Environment name to deploy."
+      - string:
+          name: url
+          description: "URL to use as alias for MD port."
+
+    scm:
+      - svn:
+          workspaceupdater: wipeworkspace
+          repos:
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/builds/{version}/{build}"
+             basedir: .
+             repo-depth: infinity
+             ignore-externals: true
+             viewvc-url: fisheye.pclender.com
+
+    project-type: freestyle
+    defaults: global
+    description: "Mortgage Director Deployment Scheduler"
+    disabled: False
+    display-name: "Mortgage Director Deployment Process Scheduler"
+    concurrent: True
+    quiet-period: 0
+    block-downstream: False
+    block-upstream: False
+    retry-count: 3
+    build-discarder: 
+      daysToKeep: 3
+      numToKeep: 3
+
+    properties:
+      - authorization:
+          "LOS Development":
+             - job-build
+             - job-cancel
+             - job-read
+             - job-status
+             - job-workspace
+
+    wrappers:
+      - build-user-vars
+      - workspace-cleanup:
+          include:
+            - "*.*"
+          dirmatch: true
+      - env-script:
+          # ##################################################
+          # Requires the Jenkins Environment Script Plugin.
+          # Source and execute python script
+          # Would need to install python on the build server
+          # ##################################################
+          script-content: ''
+          script-type: batch-script
+      - timestamps
+
+    builders:
+      - shell: |
+          echo "Full Name: $BUILD_USER"
+          echo "First Name: $BUILD_USER_FIRST_NAME"
+          echo "Last Name: $BUILD_USER_LAST_NAME"
+          echo "User ID: $BUILD_USER_ID"
+          exit(0)
+
+    publishers:
+      - jira
+      - email-ext:
+          content-type: default
+          subject: '$DEFAULT_SUBJECT'
+          body: 'DEPLOYMENT: ${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}.'
+          recipients: !include: email_recipients.yaml.inc
+          reply-to: '$DEFAULT_REPLYTO'
+          attach-build-log: true
+          compress-log: true
+          presend-script: '$DEFAULT_PRESEND_SCRIPT'
+          postsend-script: '$DEFAULT_POSTEND_SCRIPT'
+          failure: true
+          success: true
+          prebuild: true
