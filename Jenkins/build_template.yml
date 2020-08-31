@@ -103,12 +103,7 @@
           content-type: default
           subject: '$DEFAULT_SUBJECT'
           body: '${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}.'
-
-          # --------------------------------------------------
-          # Figure how to store names in external file
-          # --------------------------------------------------
           recipients: !include: email_recipients.yaml.inc
-
           reply-to: '$DEFAULT_REPLYTO'
           attach-build-log: true
           compress-log: true
@@ -117,4 +112,3 @@
           failure: true
           success: true
           prebuild: true
- 
