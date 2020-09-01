@@ -1,5 +1,4 @@
 - project:
-- project:
     name: MD_Deploy_Job_definition_template
     views:
       - 'MD Deploy Jobs'
@@ -30,11 +29,9 @@
           description: "Specific build version: nnnnn - Use '00000' to use the latest build."
           regex: \d\d\d\d\d
           msg: "Build number must be a 5 digit number."
-      - string:
+      - choice:
           name: environment
-          description: "Environment name to deploy."
-      - string:
-          name: url
+          choices: !include: url_port_mapping.yaml.inc
           description: "URL to use as alias for MD port."
 
     scm:
