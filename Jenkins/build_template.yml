@@ -11,16 +11,16 @@
       - 'MD Build Jobs'
       
     jobs:
-      - "Build-MD-{version}-{environment}"
+      - "Build-MD-{version}"
 
 - view-template:
     name: "MD Build Jobs"
-    description: "Mortgage Director Build Jobs"
+    description: "Mortgage Director Build Jobs "
     view-type: list
     regex: 'Build-MD-.*'
 
 - job-template:
-    name: "Build-MD-{version}-{environment}"
+    name: "Build-MD-{version}"
 
     scm:
       - svn:
@@ -34,9 +34,9 @@
 
     project-type: freestyle
     defaults: global
-    description: "Mortgage Director Release Version {version} Builds in {environment} environment"
+    description: "Mortgage Director - Build - {version} "
     disabled: False
-    display-name: "{environment} {version} MD Builds"
+    display-name: "Mortgage Director - Build - {version} "
     concurrent: False
     quiet-period: 0
     block-downstream: False
