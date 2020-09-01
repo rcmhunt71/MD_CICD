@@ -1,8 +1,5 @@
-
-#/!usr/bin/env python
+#!/usr/bin/env python
 import argparse
-import sys
-
 
 number_to_text_definitions = {
     0: "zero",
@@ -38,10 +35,16 @@ number_to_text_definitions = {
 
 
 class CLIOptions:
+
+    DEFAULT_VAR = "VERSION_TEXT"
+
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("build_number", help="Build Number")
+        self.parser.add_argument("-v", "--var", help="Name of variable to 'equate'", default=self.DEFAULT_VAR)
         self.parser.add_argument("-d", "--delimiter", help="Build Number Delimiter", default='.')
+        self.parser.add_argument("-b", "--build_num", help="Number of build numbers to use: Year=1, Major=2, Minor=3",
+                                 default=3, type=int)
         self.args = self.parser.parse_args()
 
 
@@ -62,12 +65,12 @@ class ConvertToText:
         return conversion
 
     @staticmethod
-    def build_number(build_num: str, build_delimiter: str = '.') -> str:
-        return "".join([f"{ConvertToText.convert_to_text(int(vers))}".capitalize() for vers
-                        in build_num.split(build_delimiter)])
+    def build_number(build_num: str, build_delimiter: str = '.', build_numbers: int = 3) -> str:
+        return "".join([f"{ConvertToText.convert_to_text(int(version))}".capitalize() for version
+                        in build_num.split(build_delimiter)[0:build_numbers]])
 
 
 if __name__ == '__main__':
     args = CLIOptions().args
-    print(ConvertToText.build_number(args.build_number, args.delimiter))
+    print(f"{args.var}={ConvertToText.build_number(args.build_number, args.delimiter, args.build_num)}")
 
