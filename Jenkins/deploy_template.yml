@@ -14,6 +14,7 @@
 - job-template:
     name: "Deploy-MD"
     allow_empty_variables: true
+    target_ini: !include: target_ini_location.yaml.inc
 
     parameters:
 #     Requires Validating String Plugin
@@ -32,12 +33,13 @@
       - choice:
           name: environment
           choices: !include: url_port_mapping.yaml.inc
-          description: "URL to use as alias for MD port."
+          description: "URL to use as an alias for the MD port."
 
     scm:
       - svn:
           workspaceupdater: wipeworkspace
           repos:
+          # Need clarification on the URL for SVN, based on how we want to store the builds in SVN
           -  url: "svn://pcldevsvn02.development.pclender.local/LOS/builds/{version}/{build}"
              basedir: .
              repo-depth: infinity
@@ -79,8 +81,8 @@
           # Source and execute python script
           # Would need to install python on the build server
           # ##################################################
-          script-content: ''
-          script-type: batch-script
+          script-content: /home/rhunt/PycharmProjects/MD_CICD/src/Utils/build_to_text.py "$version"
+          script-type: unix-script
       - timestamps
 
     builders:
@@ -89,7 +91,9 @@
           echo "First Name: $BUILD_USER_FIRST_NAME"
           echo "Last Name: $BUILD_USER_LAST_NAME"
           echo "User ID: $BUILD_USER_ID"
-          exit(0)
+          echo "Version Text: $VERSION_TEXT"
+      - shell: |
+          python /home/rhunt/PycharmProjects/MD_CICD/src/Utils/update_target_ini.py "$target_ini" add env
 
     publishers:
       - jira
