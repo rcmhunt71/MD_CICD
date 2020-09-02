@@ -1,9 +1,12 @@
+#!/usr/bin/env python
 import argparse
 import configparser
 import logging
 import os
 import re
 import typing
+
+import yaml
 
 
 class CLIArgs:
@@ -51,8 +54,11 @@ class CLIArgs:
         """
         parser = sub_parser.add_parser(verb, help=f"{verb.lower().capitalize()} an entry to file.")
         parser.add_argument('env', help=f"The name of environment to {verb.lower()}.")
-        if verb != self.REMOVE:
+        if verb == self.UPDATE:
             parser.add_argument('values', nargs='+', help=f"The 'key:value' pairs of the options to {verb.lower()}.")
+        elif verb == self.ADD:
+            parser.add_argument('version_str', help='Version text string. 20.1 => TwentyOne')
+            parser.add_argument('primary_port', help='Primary Server Port')
 
     def add_validate(self, sub_parser: typing.Any) -> None:
         """
@@ -101,6 +107,24 @@ class TargetIniFile(IniFile):
     CORE = 'Core'
     TARGETS = 'TARGETS'
     TEMPLATE_SECTION = 'dev_trunk'
+    TARGET_TEMPLATE = 'target_ini_section_template.yaml'
+    ROOT = 'env_name'
+    INSERT_BUILD = '__build__'
+    INSERT_BUILD_LOWER = '__build_lower__'
+    STATUS_SERVER_PORT = 'STATUS_SERVER_PORT'
+    MONITOR_SERVER_PORT = 'MONITOR_SERVER_PORT'
+
+    def _define_new_environment(self, version_string: str):
+        with open(self.TARGET_TEMPLATE, "r") as TEMPLATE:
+            template_struct = yaml.load(TEMPLATE)
+
+        template = template_struct[self.ROOT]
+        for key, data_value in template.items():
+            if self.INSERT_BUILD.lower() in str(data_value).lower():
+                template[key] = re.sub(rf'{self.INSERT_BUILD}', version_string, data_value)
+            elif self.INSERT_BUILD_LOWER.lower() in str(data_value).lower():
+                template[key] = re.sub(rf'{self.INSERT_BUILD}', version_string.lower(), data_value)
+        return template
 
     def verify_targets_are_defined(self) -> bool:
         """
@@ -182,27 +206,22 @@ class TargetIniFile(IniFile):
                        f"Value: '{self.config.get(section=section_name, option=option)}'")
         return self.config.get(section=section_name, option=option.lower()) == value
 
-    def add_section(self, section_name: str, option: str, value: typing.Any) -> bool:
+    def add_section(self, version_str_text: str, environment: str, primary_port) -> bool:
         """
-        Add a section to the ini file.
+        Add a section to the file, using the predefined template.
+        :param version_str_text: Version string: 20.3 => TwentyThree
+        :param environment: Name of environment (dev/qa)
+        :param primary_port: Primary port (wil be used to determine internal ports)
 
-        :param section_name: Name of the section/environment to add
-        :param option: Keyword to add
-        :param value: Value to associate with the keyword/option
+        :return: Boolean if section was added to the file. True = Yes, False = No
 
-        :return: Bool: Value successfully set (True) or not set (False)
         """
-        self.log.info(f"Add ENV '{section_name}': Adding '{option}' to '{value}'")
-
-        if section_name not in self.config:
-            self.config[section_name] = {option.lower(): value}
-        else:
-            self.config.set(section=section_name, option=option.lower(), value=value)
-
-        self.log.debug(f"Value check: ENV: {section_name} Option: '{option.lower()}' --> "
-                       f"Value: '{self.config.get(section=section_name, option=option)}'")
-
-        return self.config.get(section=section_name, option=option.lower()) == value
+        section_name = f"{version_str_text.lower()}_{environment.lower()}"
+        self.config[section_name] = self._define_new_environment(version_string=version_str_text)
+        self.config.set(section_name, self.MONITOR_SERVER_PORT, str(int(primary_port) + 2))
+        self.config.set(section_name, self.STATUS_SERVER_PORT, str(int(primary_port) + 3))
+        self.log.info(f"Add ENV '{section_name}': using primary port as basis: {primary_port}")
+        return self.config.has_section(section_name)
 
     def get_target_sections(self, sort: bool = False) -> typing.List[str]:
         """
@@ -372,14 +391,14 @@ if __name__ == '__main__':
         target.write_file()
 
     elif cli.args.file_action == cli.ADD:
-        log.info(f"Adding {cli.args.env}: {cli.args.values}")
-        for kv_pair in cli.args.values:
-            option, value = kv_pair.split(':')
-            target.add_section(section_name=cli.args.env, option=option.lower(), value=value)
-        env_was_added = cli.args.env in target.get_target_sections()
-        log.debug(f"Section {cli.args.env} was added? {env_was_added}")
+        env_name = f"{cli.args.version_str.lower()}_{cli.args.env.lower()}"
+        log.info(f"Adding {env_name}: {cli.args.primary_port}")
+        target.add_section(version_str_text=cli.args.version_str, primary_port=cli.args.primary_port,
+                           environment=cli.args.env)
+        env_was_added =env_name in target.get_target_sections()
+        log.debug(f"Section {env_name} was added? {env_was_added}")
         if not env_was_added:
-            log.error(f"Section {cli.args.env} was NOT added.")
+            log.error(f"Section {env_name} was NOT added.")
         target.write_file()
 
     elif cli.args.file_action == cli.VALIDATE:

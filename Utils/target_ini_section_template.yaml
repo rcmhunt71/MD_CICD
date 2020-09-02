@@ -1,0 +1,22 @@
+env_name:
+  DATABASE_PASSWORD: PCLender123
+  DATABASE_USERNAME: __build__
+  DB_NAME: __build__
+  DB_SERVER: 172.18.0.50
+  INI_FILE: \\pcldevdc01\Development\__build__\setup.ini
+  IP_ADDRESS: 172.19.200.21
+  LOG_FOLDER: D:\LogsAdvantage\__build__
+  LOS_INSTANCE_NAME: __build__
+  LOS_SERVER_NAME: PCLDEVAPP01.development.pclender.local
+  MONITOR_SERVER_PORT: __port__
+  PORT: 211
+  PRICE_TARGET_FOLDER: \\PCLDEV05.development.pclender.local\c$\PRICE
+  PRINTFORM_FOLDER: \\pcldevdc01\Development\__build__\printf
+  REPORTING_DATABASE_PASSWORD: PCLender123
+  REPORTING_DATABASE_USERNAME: __build___ado
+  REPORTING_DB_NAME: __build__
+  REPORTING_DB_SERVER: 172.18.0.50
+  SECOND_PORT: 211
+  SERVICE_NAME: __build_lower__
+  STATUS_SERVER_PORT: __port__
+  TARGET_FOLDER: \\PCLDEVAPP01.development.pclender.local\$d\PCLender\ihtc16.12.0
