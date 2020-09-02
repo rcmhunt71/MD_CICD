@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-
-
 import argparse
+
 
 class CLI:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("build_number", help="Build Version number: X.Y.Z.a")
         self.args = self.parser.parse_args()
+
 
 if __name__ == "__main__":
     build_nums = CLI().args.build_number.split('.')
