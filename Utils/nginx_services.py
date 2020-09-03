@@ -6,13 +6,22 @@ from requests.auth import HTTPBasicAuth
 import typing
 
 
+DEFAULT_IPS = ['10.9.20.10']
+DEFAULT_PORT = 8989
+
+
 class CliArgs:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument("-s", "--service", default=None, type=str, nargs='+',
+        self.parser.add_argument("-a", "--ip_addrs", default=None, type=str, nargs='+',
+                                 help="IP Addresses of target Nginx devices")
+        self.parser.add_argument("-p", "--port", default=DEFAULT_PORT, type=int,
+                                 help=f"Nginx API Server Port. DEFAULT: {DEFAULT_PORT}")
+        self.parser.add_argument("-s", "--services", default=None, type=str, nargs='+',
                                  help="Name of service(s)",)
         self.parser.add_argument("-i", "--server_index",  default=None, type=int,
-                                 help="Server index number. If not specified, all registered indices will be used. "
+                                 help="Server index number. "
+                                      "NOTE: If not specified, all registered indices will be used. "
                                       "If multiple services are specified, this argument is ignored.")
         self.args = self.parser.parse_args()
         self._check_conditions()
@@ -64,9 +73,9 @@ class NginxServerInfo:
         :return: JSON formatted API response
 
         """
-        RESOURCE = "/stream/upstreams/"
+        url_resource = "/stream/upstreams/"
 
-        url = self.base_url + RESOURCE
+        url = self.base_url + url_resource
         resp = requests.get(url, auth=self.auth)
 
         if int(resp.status_code) == 200:
@@ -99,7 +108,7 @@ class NginxServerInfo:
 
         """
 
-        RESOURCE = '/stream/upstreams/{streamUpstreamName}/servers/'
+        url_resource = '/stream/upstreams/{streamUpstreamName}/servers/'
 
         fields = fields or [self.SERVER, self.DOWN]
         service = service or self.get_list_of_services()
@@ -108,7 +117,7 @@ class NginxServerInfo:
         for server in service:
 
             # Get upstream server info
-            url = self.base_url + RESOURCE.format(streamUpstreamName=server)
+            url = self.base_url + url_resource.format(streamUpstreamName=server)
             resp = requests.get(url, auth=self.auth)
             if resp.status_code != 200:
                 print(f"\tERROR: Unexpected response from {url}: STATUS CODE: {resp.status_code}")
@@ -174,9 +183,9 @@ class NginxServerInfo:
                  False: Unable to set values
                  See console output for error details.
         """
-        RESOURCE = '/stream/upstreams/{{streamUpStreamName}/servers/{streamUpstreamServerId}'
+        url_resource = '/stream/upstreams/{{streamUpStreamName}/servers/{streamUpstreamServerId}'
 
-        url = self.base_url + RESOURCE.format(streamUpStreamName=service, streamUpstreamServerIddd=server_id)
+        url = self.base_url + url_resource.format(streamUpStreamName=service, streamUpstreamServerIddd=server_id)
 
         resp = requests.patch(url, auth=self.auth, payload=attribute_dict)
         status = resp.status_code == 200
@@ -189,11 +198,11 @@ class NginxServerInfo:
 if __name__ == '__main__':
     (user, pswd) = ('*****', '******')
 
-    api_base_url = 'http://{ip_address}:8989/api/6'
-    nginx_ips = ['10.9.20.10']
-
+    # Parse CLI args
     cli = CliArgs()
-    servers = cli.args.service
+    api_base_url = f'http://{{ip_address}}:{cli.args.port}/api/6'
+    nginx_ips = cli.args.ip_addrs if cli.args.ip_addrs is not None else DEFAULT_IPS
+    service = cli.args.service
     index = cli.args.server_index
 
     # For each Nginx API IP that needs to be queried...
@@ -204,5 +213,5 @@ if __name__ == '__main__':
             username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
 
         # Get the server status (and show the results)
-        server_status = nginx_apis.get_server_status_info(service=servers, index=index)
+        server_status = nginx_apis.get_server_status_info(service=service, index=index)
         pprint.pprint(server_status)
