@@ -34,7 +34,7 @@ class CliArgs:
 
         """
         if self.args.server_index is not None:
-            if self.args.service is None or (self.args.service is not None and len(self.args.service) > 1):
+            if self.args.services is None or (self.args.services is not None and len(self.args.services) > 1):
                 print(f"\n***NOTE***: Multiple services have been specified, ignoring the specified index value: "
                       f"'{self.args.server_index}'.\n")
 
@@ -95,13 +95,14 @@ class NginxServerInfo:
         return list(self.get_upstream_info().keys())
 
     def get_server_status_info(
-            self, service: typing.Optional[list] = None, index: typing.Optional[int] = None,
+            self, service: typing.Optional[list] = None, server_index: typing.Optional[int] = None,
             fields: typing.Optional[list] = None) -> dict:
         """
         Get status information for each server, based on server id.
 
         :param service: Name of specific server. If not specified, get a list of the services.
-        :param index: For a single service, specify the server index. If multiple servers, all indexes will be returned.
+        :param server_index: For a single service, specify the server index. If multiple servers, all indexes will
+                   be returned.
         :param fields: List of server fields to retrieve; if not specified, defaults to SERVER IP and DOWN status.
 
         :return: Dictionary of server information: [server][server_id][ [field1: attribute1]. [field2, attribute2] ]
@@ -127,7 +128,7 @@ class NginxServerInfo:
             data = resp.json()
             server_info[server] = dict()
             for idx, server_dict in enumerate(data):
-                if len(service) == 1 and index is not None and idx != index:
+                if len(service) == 1 and server_index is not None and idx != server_index:
                     continue
                 server_info[server][server_dict[self.ID]] = dict([(key, server_dict[key]) for key in fields])
 
@@ -162,7 +163,7 @@ class NginxServerInfo:
         """
         try:
             server_info = self.get_server_status_info(fields=list(attribute_dict.keys()))[server_id]
-        except KeyError as err:
+        except KeyError:
             print(f"\tERROR: Unknown server id ({server_id}) for {service}")
             status = False
         else:
@@ -196,13 +197,13 @@ class NginxServerInfo:
 
 
 if __name__ == '__main__':
-    (user, pswd) = ('*****', '******')
+    (user, pswd) = ('******', '******')
 
     # Parse CLI args
     cli = CliArgs()
     api_base_url = f'http://{{ip_address}}:{cli.args.port}/api/6'
     nginx_ips = cli.args.ip_addrs if cli.args.ip_addrs is not None else DEFAULT_IPS
-    service = cli.args.service
+    services = cli.args.services
     index = cli.args.server_index
 
     # For each Nginx API IP that needs to be queried...
@@ -213,5 +214,5 @@ if __name__ == '__main__':
             username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
 
         # Get the server status (and show the results)
-        server_status = nginx_apis.get_server_status_info(service=service, index=index)
+        server_status = nginx_apis.get_server_status_info(service=services, server_index=index)
         pprint.pprint(server_status)
