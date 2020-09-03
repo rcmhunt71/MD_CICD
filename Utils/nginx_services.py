@@ -1,8 +1,33 @@
 #!/usr/bin/env python
+import argparse
 import pprint
 import requests
 from requests.auth import HTTPBasicAuth
 import typing
+
+
+class CliArgs:
+    def __init__(self):
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument("-s", "--service", default=None, type=str, nargs='+',
+                                 help="Name of service(s)",)
+        self.parser.add_argument("-i", "--server_index",  default=None, type=int,
+                                 help="Server index number. If not specified, all registered indices will be used. "
+                                      "If multiple services are specified, this argument is ignored.")
+        self.args = self.parser.parse_args()
+        self._check_conditions()
+
+    def _check_conditions(self) -> None:
+        """
+        Print out a warning if certain conditions/combinations of arguments are specified.
+
+        :return: None
+
+        """
+        if self.args.server_index is not None:
+            if self.args.service is None or (self.args.service is not None and len(self.args.service) > 1):
+                print(f"\n***NOTE***: Multiple services have been specified, ignoring the specified index value: "
+                      f"'{self.args.server_index}'.\n")
 
 
 class NginxServerInfo:
@@ -61,11 +86,13 @@ class NginxServerInfo:
         return list(self.get_upstream_info().keys())
 
     def get_server_status_info(
-            self, servers: typing.Optional[list] = None, fields: typing.Optional[list] = None) -> dict:
+            self, service: typing.Optional[list] = None, index: typing.Optional[int] = None,
+            fields: typing.Optional[list] = None) -> dict:
         """
         Get status information for each server, based on server id.
 
-        :param servers: Name of specific server. If not specified, get a list of the services.
+        :param service: Name of specific server. If not specified, get a list of the services.
+        :param index: For a single service, specify the server index. If multiple servers, all indexes will be returned.
         :param fields: List of server fields to retrieve; if not specified, defaults to SERVER IP and DOWN status.
 
         :return: Dictionary of server information: [server][server_id][ [field1: attribute1]. [field2, attribute2] ]
@@ -75,10 +102,10 @@ class NginxServerInfo:
         RESOURCE = '/stream/upstreams/{streamUpstreamName}/servers/'
 
         fields = fields or [self.SERVER, self.DOWN]
-        servers = servers or self.get_list_of_services()
+        service = service or self.get_list_of_services()
 
         server_info = dict()
-        for server in servers:
+        for server in service:
 
             # Get upstream server info
             url = self.base_url + RESOURCE.format(streamUpstreamName=server)
@@ -90,7 +117,9 @@ class NginxServerInfo:
             # Convert to json and parse out desired fields
             data = resp.json()
             server_info[server] = dict()
-            for server_dict in data:
+            for idx, server_dict in enumerate(data):
+                if len(service) == 1 and index is not None and idx != index:
+                    continue
                 server_info[server][server_dict[self.ID]] = dict([(key, server_dict[key]) for key in fields])
 
         return server_info
@@ -158,11 +187,14 @@ class NginxServerInfo:
 
 
 if __name__ == '__main__':
-    (user, pswd) = (1, 2)
+    (user, pswd) = ('*****', '******')
 
     api_base_url = 'http://{ip_address}:8989/api/6'
     nginx_ips = ['10.9.20.10']
-    servers = []
+
+    cli = CliArgs()
+    servers = cli.args.service
+    index = cli.args.server_index
 
     # For each Nginx API IP that needs to be queried...
     for ip in nginx_ips:
@@ -172,5 +204,5 @@ if __name__ == '__main__':
             username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
 
         # Get the server status (and show the results)
-        server_status = nginx_apis.get_server_status_info(servers=servers)
+        server_status = nginx_apis.get_server_status_info(service=servers, index=index)
         pprint.pprint(server_status)
