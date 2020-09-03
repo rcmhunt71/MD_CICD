@@ -26,7 +26,7 @@
       - svn:
           workspaceupdater: wipeworkspace
           repos:
-          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{environment}/{version}"
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/Maintenance/{version}"
              basedir: .
              repo-depth: infinity
              ignore-externals: true
@@ -42,9 +42,6 @@
     block-downstream: False
     block-upstream: False
     retry-count: 3
-    build-discarder: 
-      daysToKeep: 3
-      numToKeep: 3
 
     properties:
       - authorization:
@@ -54,6 +51,14 @@
              - job-read
              - job-status
              - job-workspace
+      - build-discarder:
+          days-to-keep: 3
+          num-to-keep: 3
+
+    triggers:
+      - pollscm:
+          cron: "H/5 * * * *"
+          ignore-post-commit0hooks: False
 
     wrappers:
       - build-user-vars
@@ -63,14 +68,6 @@
           include:
             - "*.*"
           dirmatch: true
-      - env-script:
-          # ##################################################
-          # Requires the Jenkins Environment Script Plugin.
-          # Source and execute python script
-          # Would need to install python on the build server
-          # ##################################################
-          script-content: ''
-          script-type: batch-script
       - timestamps
       - timeout:
           timeout: "{build_timeout}"
@@ -84,7 +81,7 @@
           echo "First Name: $BUILD_USER_FIRST_NAME"
           echo "Last Name: $BUILD_USER_LAST_NAME"
           echo "User ID: $BUILD_USER_ID"
-          exit(0)
+          exit 0
        
       - batch: "%WORKSPACE%\\BuildTools\\ResourceFileCreator.exe"
       - batch: "{DELPHI_COMPILER} %WORKSPACE%\\components\\D10\\TMS Component Pack\\tmsdXE9group.grouproj"
