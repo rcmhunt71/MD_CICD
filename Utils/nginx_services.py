@@ -158,19 +158,19 @@ class NginxServerInfo:
 
 
 if __name__ == '__main__':
-    (user, pswd) = ('********', '********')
+    (user, pswd) = ('cbrown', 'Welcome1')
 
     api_base_url = 'http://{ip_address}:8989/api/6'
     nginx_ips = ['10.9.20.10']
-    servers = []
+    servers = ['los_adam']
 
     # For each Nginx API IP that needs to be queried...
     for ip in nginx_ips:
 
         # Instantiate API interaction class (store credentials, base_url, etc.)
-        nginx_server_apis = NginxServerInfo(
+        nginx_apis = NginxServerInfo(
             username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
 
         # Get the server status (and show the results)
-        server_status = nginx_server_apis.get_server_status_info(servers=servers)
+        server_status = nginx_apis.get_server_status_info(servers=servers)
         pprint.pprint(server_status)
