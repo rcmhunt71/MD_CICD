@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     api_base_url = 'http://{ip_address}:8989/api/6'
     nginx_ips = ['10.9.20.10']
-    servers = ['los_adam']
+    servers = []
 
     # For each Nginx API IP that needs to be queried...
     for ip in nginx_ips:
