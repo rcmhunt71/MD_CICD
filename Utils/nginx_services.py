@@ -5,11 +5,6 @@ import requests
 from requests.auth import HTTPBasicAuth
 import typing
 
-
-DEFAULT_IPS = ['10.9.20.10']
-DEFAULT_PORT = 8989
-
-
 class CliArgs:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -23,6 +18,8 @@ class CliArgs:
                                  help="Server index number. "
                                       "NOTE: If not specified, all registered indices will be used. "
                                       "If multiple services are specified, this argument is ignored.")
+        self.parser.add_argument("-f", "--fields", default=None, type=str, nargs='+',
+                                 help="Fields to set (name:value).")
         self.args = self.parser.parse_args()
         self._check_conditions()
 
@@ -38,6 +35,13 @@ class CliArgs:
                 print(f"\n***NOTE***: Multiple services have been specified, ignoring the specified index value: "
                       f"'{self.args.server_index}'.\n")
 
+        if self.args.fields is not None:
+            diff = set([x.split(':')[0] for x in self.args.fields]) - set(NginxServerInfo.OPTIONS)
+            if diff:
+                print(f"***ERROR***:\n\tUnrecognized server field options: {list(diff)}. "
+                      f"Ignoring unrecognized option(s).")
+                self.args.fields = [arg for arg in self.args.fields if arg.split(':')[0] not in diff]
+
 
 class NginxServerInfo:
     """
@@ -48,9 +52,16 @@ class NginxServerInfo:
     """
 
     # JSON Response Keywords
+    BACKUP = 'backup'
     DOWN = 'down'
+    FAIL_TIMEOUT = 'fail_timeout'
     ID = 'id'
+    MAX_CONNS = 'max_conns'
+    MAX_FAILS = 'max_fails'
+    PEERS = 'peers'
     SERVER = 'server'
+    WEIGHT = 'weight'
+    OPTIONS = [BACKUP, DOWN, FAIL_TIMEOUT, ID, MAX_CONNS, MAX_FAILS, SERVER, WEIGHT]
 
     def __init__(self, username: str, password: str, base_url: str) -> None:
         """
@@ -82,7 +93,7 @@ class NginxServerInfo:
             data = resp.json()
         else:
             data = {}
-            print(f"\tERROR: Unexpected response from {url}: STATUS CODE: {resp.status_code}")
+            print(f"\tERROR: Unexpected response from GET {url}: STATUS CODE: {resp.status_code}")
 
         return data
 
@@ -93,6 +104,9 @@ class NginxServerInfo:
         :return: List of configured services
         """
         return list(self.get_upstream_info().keys())
+
+    def get_number_of_servers(self, service: str) -> int:
+        return len(self.get_upstream_info()[service][NginxServerInfo.PEERS])
 
     def get_server_status_info(
             self, service: typing.Optional[list] = None, server_index: typing.Optional[int] = None,
@@ -121,7 +135,7 @@ class NginxServerInfo:
             url = self.base_url + url_resource.format(streamUpstreamName=server)
             resp = requests.get(url, auth=self.auth)
             if resp.status_code != 200:
-                print(f"\tERROR: Unexpected response from {url}: STATUS CODE: {resp.status_code}")
+                print(f"\tERROR: Unexpected response from GET {url}: STATUS CODE: {resp.status_code}")
                 continue
 
             # Convert to json and parse out desired fields
@@ -134,21 +148,36 @@ class NginxServerInfo:
 
         return server_info
 
-    def set_server_attributes(self, service: str, server_id: int, attribute_dict: dict) -> bool:
+    def set_server_attributes(self, service: str, attribute_dict: dict, server_id: typing.Optional[int] = None) -> bool:
         """
         Set specific server attributes.
 
         :param service: Name of specific service
-        :param server_id: Index of specific upstream server
         :param attribute_dict: Dictionary of attributes (field1: value1, field2: value2)
+        :param server_id: Index of specific upstream server
 
         :return: True = value(s) set and verified,
                  False = not all values were set successfully.
                  See console output for error details.
+
         """
-        result = self._set_server_attributes(service=service, server_id=server_id, attribute_dict=attribute_dict)
-        return result and self._verify_server_attributes(
-            service=service, server_id=server_id, attribute_dict=attribute_dict)
+
+        if server_id is None:
+            number_of_ids = self.get_number_of_servers(service)
+            server_ids = range(self.get_number_of_servers(service))
+        else:
+            number_of_ids = 1
+            server_ids = list(server_id)
+
+        print(f"Service: {service} has {number_of_ids} servers:")
+
+        result = True
+        for server_id in server_ids:
+            result = result and self._set_server_attributes(
+                service=service, server_id=server_id, attribute_dict=attribute_dict)
+            result = result and self._verify_server_attributes(
+                service=service, server_id=server_id, attribute_dict=attribute_dict)
+        return result
 
     def _verify_server_attributes(self, service: str, server_id: int, attribute_dict: dict) -> bool:
         """
@@ -162,14 +191,17 @@ class NginxServerInfo:
 
         """
         try:
-            server_info = self.get_server_status_info(fields=list(attribute_dict.keys()))[server_id]
+            server_info = self.get_server_status_info(fields=list(attribute_dict.keys()))[service][server_id]
         except KeyError:
             print(f"\tERROR: Unknown server id ({server_id}) for {service}")
             status = False
         else:
             status = True
             for key, value in attribute_dict.items():
-                status = status and server_info[key] == value
+                result = str(server_info[key]).lower() == str(value).lower()
+                status = status and result
+                print(f"\t- Verifying service '{service}' --> server #{server_id} property '{key}' "
+                      f"was set to '{value}': {'PASS' if result else 'FAIL'} ")
         return status
 
     def _set_server_attributes(self, service: str, server_id: int, attribute_dict: dict) -> bool:
@@ -184,20 +216,30 @@ class NginxServerInfo:
                  False: Unable to set values
                  See console output for error details.
         """
-        url_resource = '/stream/upstreams/{{streamUpStreamName}/servers/{streamUpstreamServerId}'
+        url_resource = '/stream/upstreams/{streamUpStreamName}/servers/{streamUpstreamServerId}'
 
-        url = self.base_url + url_resource.format(streamUpStreamName=service, streamUpstreamServerIddd=server_id)
+        url = self.base_url + url_resource.format(streamUpStreamName=service, streamUpstreamServerId=server_id)
+        for key, value in attribute_dict.items():
+            print(f"\t- Setting service '{service}' --> server #{server_id} property '{key}' was set to '{value}':   ",
+                  end='')
 
-        resp = requests.patch(url, auth=self.auth, payload=attribute_dict)
+        resp = requests.patch(url, auth=self.auth, json=attribute_dict)
         status = resp.status_code == 200
         if not status:
-            print(f"\tERROR: Unexpected response from {url}: STATUS CODE: {resp.status_code}")
+            print("ERROR")
+            print(f"\tERROR: Unexpected response from PATCH {url}: STATUS CODE: {resp.status_code}")
+        else:
+            print("DONE")
 
         return status
 
 
 if __name__ == '__main__':
-    (user, pswd) = ('******', '******')
+    DEFAULT_IPS = ['10.9.20.10']
+    DEFAULT_PORT = 8989
+    DEFAULT_FIELDS = [NginxServerInfo.SERVER, NginxServerInfo.DOWN]
+
+    (user, pswd) = ('********', '********')
 
     # Parse CLI args
     cli = CliArgs()
@@ -206,6 +248,12 @@ if __name__ == '__main__':
     services = cli.args.services
     index = cli.args.server_index
 
+    attribute_dict = None
+    target_fields = None
+    if cli.args.fields is not None:
+        attribute_dict = dict([(x.split(":")[0], x.split(":")[1]) for x in cli.args.fields])
+        target_fields = list(attribute_dict.keys())
+
     # For each Nginx API IP that needs to be queried...
     for ip in nginx_ips:
 
@@ -213,6 +261,21 @@ if __name__ == '__main__':
         nginx_apis = NginxServerInfo(
             username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
 
-        # Get the server status (and show the results)
-        server_status = nginx_apis.get_server_status_info(service=services, server_index=index)
-        pprint.pprint(server_status)
+        if services is None:
+            services = nginx_apis.get_list_of_services()
+
+        # Report server status prior to change
+        server_status = nginx_apis.get_server_status_info(
+            service=services, server_index=index, fields=target_fields)
+        print(f"SERVER STATUSES:\n{pprint.pformat(server_status)}\n")
+
+        # Make requested changes
+        for service in services:
+            nginx_apis.set_server_attributes(
+                service=service, server_id=index, attribute_dict=attribute_dict)
+            print()
+
+        # Report server status after change
+        server_status = nginx_apis.get_server_status_info(
+            service=services, server_index=index, fields=target_fields)
+        print(f"\nSERVER STATUSES:\n{pprint.pformat(server_status)}")
