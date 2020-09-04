@@ -5,6 +5,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import typing
 
+
 class CliArgs:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
@@ -106,6 +107,13 @@ class NginxServerInfo:
         return list(self.get_upstream_info().keys())
 
     def get_number_of_servers(self, service: str) -> int:
+        """
+        Determine the number of servers associated with a given service.
+
+        :param service: Name of the service
+
+        :return: (int) Number of servers
+        """
         return len(self.get_upstream_info()[service][NginxServerInfo.PEERS])
 
     def get_server_status_info(
@@ -161,10 +169,10 @@ class NginxServerInfo:
                  See console output for error details.
 
         """
-
         if server_id is None:
             number_of_ids = self.get_number_of_servers(service)
             server_ids = range(self.get_number_of_servers(service))
+
         else:
             number_of_ids = 1
             server_ids = list(server_id)
@@ -239,7 +247,7 @@ if __name__ == '__main__':
     DEFAULT_PORT = 8989
     DEFAULT_FIELDS = [NginxServerInfo.SERVER, NginxServerInfo.DOWN]
 
-    (user, pswd) = ('********', '********')
+    (user, pswd) = ('cbrown', 'Welcome1')
 
     # Parse CLI args
     cli = CliArgs()
