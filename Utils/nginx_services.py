@@ -278,10 +278,11 @@ if __name__ == '__main__':
         print(f"SERVER STATUSES:\n{pprint.pformat(server_status)}\n")
 
         # Make requested changes
-        for service in services:
-            nginx_apis.set_server_attributes(
-                service=service, server_id=index, attribute_dict=attribute_dict)
-            print()
+        if attribute_dict:
+            for service in services:
+                nginx_apis.set_server_attributes(
+                    service=service, server_id=index, attribute_dict=attribute_dict)
+                print()
 
         # Report server status after change
         server_status = nginx_apis.get_server_status_info(
