@@ -175,7 +175,7 @@ class NginxServerInfo:
 
         else:
             number_of_ids = 1
-            server_ids = list(server_id)
+            server_ids = [server_id]
 
         print(f"Service: {service} has {number_of_ids} servers:")
 
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     DEFAULT_PORT = 8989
     DEFAULT_FIELDS = [NginxServerInfo.SERVER, NginxServerInfo.DOWN]
 
-    (user, pswd) = ('cbrown', 'Welcome1')
+    (user, pswd) = ('********', '*********')
 
     # Parse CLI args
     cli = CliArgs()
