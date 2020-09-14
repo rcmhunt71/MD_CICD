@@ -48,17 +48,14 @@
 
     project-type: freestyle
     defaults: global
-    description: "Mortgage Director Deployment Scheduler"
+    description: "Mortgage Director: Deploy to Environment"
     disabled: False
-    display-name: "Mortgage Director Deployment Process Scheduler"
+    display-name: "Mortgage Director: Deploy to Environment"
     concurrent: True
     quiet-period: 0
     block-downstream: False
     block-upstream: False
     retry-count: 3
-    build-discarder: 
-      daysToKeep: 3
-      numToKeep: 3
 
     properties:
       - authorization:
@@ -68,6 +65,9 @@
              - job-read
              - job-status
              - job-workspace
+      - build-discarder:
+          days-to-keep: 3
+          num-to-keep: 3
 
     wrappers:
       - build-user-vars
