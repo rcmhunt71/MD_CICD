@@ -4,7 +4,7 @@ import pprint
 import sys
 
 sys.path.append('.')
-from nginx_configured_server_info import NginxServerInfo
+from nginx_apis import NginxServerInfo
 
 
 class CliArgs:

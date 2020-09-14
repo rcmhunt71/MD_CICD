@@ -4,7 +4,23 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 
-class NginxServerInfo:
+class BaseNginxAPIClient:
+    def __init__(self, username: str, password: str, base_url: str) -> None:
+        """
+        Nginx Server Info Constructor
+
+        :param username: Name to use when authenticate against the API
+        :param password: Password to use when authenticate against the API
+        :param base_url: Primary API URL
+
+        """
+        self.username = username
+        self.password = password
+        self.base_url = base_url
+        self.auth = HTTPBasicAuth(self.username, self.password)
+
+
+class NginxServerInfo(BaseNginxAPIClient):
     """
     Provides basic functionality to interact with Nginx APIs.
     - /stream/upstreams/
@@ -23,20 +39,6 @@ class NginxServerInfo:
     SERVER = 'server'
     WEIGHT = 'weight'
     OPTIONS = [BACKUP, DOWN, FAIL_TIMEOUT, ID, MAX_CONNS, MAX_FAILS, SERVER, WEIGHT]
-
-    def __init__(self, username: str, password: str, base_url: str) -> None:
-        """
-        Nginx Server Info Constructor
-
-        :param username: Name to use when authenticate against the API
-        :param password: Password to use when authenticate against the API
-        :param base_url: Primary API URL
-
-        """
-        self.username = username
-        self.password = password
-        self.base_url = base_url
-        self.auth = HTTPBasicAuth(self.username, self.password)
 
     def get_upstream_info(self) -> dict:
         """
@@ -200,3 +202,35 @@ class NginxServerInfo:
             print("DONE")
 
         return status
+
+
+class NginxKeyVals(BaseNginxAPIClient):
+    def get_stream_keyvals(self, zone_name: typing.Optional[str] = None) -> typing.Dict[str, dict]:
+        """
+        Gets basic upstream info: name of services, servers per services, and metadata describing each server
+
+        :param zone_name: (Optional) Name of zone (dictionary key) to return, otherwise return all.
+
+        :return: JSON formatted API response
+
+        """
+        url_resource = '/stream/keyvals'
+
+        url = self.base_url + url_resource
+        resp = requests.get(url, auth=self.auth)
+
+        if int(resp.status_code) == 200:
+            data = resp.json()
+        else:
+            data = {}
+            print(f"\tERROR: Unexpected response from GET {url}: STATUS CODE: {resp.status_code}")
+
+        if zone_name is not None:
+            if zone_name in data:
+                data = data[zone_name]
+            else:
+                print(f"\tERROR: Zone name provided ({zone_name}) was not found in the response. "
+                      f"Returning entire response")
+                print(f"\t       Zones returned: {', '.join(list(data.keys()))}")
+
+        return data
