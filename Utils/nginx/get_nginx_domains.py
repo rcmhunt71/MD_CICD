@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
-import pprint
 import re
 import sys
+import typing
 
 sys.path.append('.')
 from nginx_apis import NginxKeyVals
@@ -16,6 +16,8 @@ class CliArgs:
                                  help="IP Addresses of target Nginx devices")
         self.parser.add_argument("-p", "--port", default=DEFAULT_PORT, type=int,
                                  help=f"Nginx API Server Port. DEFAULT: {DEFAULT_PORT}")
+        self.parser.add_argument("-y", '--yaml', default=None, type=str,
+                                 help=f"Name of yaml file to write FQDN (for use in configuring through JJB)")
         self.args = self.parser.parse_args()
 
 
@@ -85,6 +87,53 @@ def convert_version_to_number(version_number: str) -> str:
     return version_number
 
 
+def sort_fqdns(fqdns: typing.List[str]) -> typing.List[str]:
+    """
+    Sort the FDQNs, first broken up into environment FDQNs and then FQDNs that start with the version number
+    Then sort each grouping in alphabetical order. The groups will be separated by an element = "======"
+
+    :param fqdns: List of sorted, fully qualified domain names
+
+    :return: List of sorted FDQNs
+    """
+    twenty = 'twenty'
+    nineteen = 'nineteen'
+    max_len = 0
+    version = []
+    envs = []
+
+    for fqdn in set(x.lower() for x in fqdns):
+        max_len = max_len if len(fqdn) < max_len else len(fqdn)
+        if fqdn.lower().startswith(twenty) or fqdn.lower().startswith(nineteen):
+            version.append(fqdn.lower())
+        else:
+            envs.append(fqdn.lower())
+    return sorted(envs) + ["=" * max_len] + sorted(version)
+
+
+def check_for_duplicates(fqdns_list: typing.List[str], device_ip: str) -> bool:
+    """
+    Check if there are any duplicate domain names: case-insensitive comparison
+    :param fqdns_list: List of FDQNs
+    :param device_ip: IP address of NGINX device (used for reporting)
+
+    :return: bool: True = duplicates found, False = No duplicates found.
+    
+    """
+    fqdn_set = set(x.lower() for x in fqdns_list)
+    if len(fqdn_set) == len(fqdns_list):
+        return False
+
+    # Find and report duplicates
+    exists = set()
+    dupes = [x.lower() for x in fqdns_list if x.lower() in exists or exists.add(x.lower())]
+    duplicated_pairs = sorted([x for x in fqdns_list if x.lower() in dupes], key=lambda x: x.lower())
+    print(f"\tERROR: There are duplicates in the FQDNs from a single NGINX ({device_ip}):")
+    for index in range(int(len(duplicated_pairs)/2)):
+        print(f"\t  + {duplicated_pairs[index * 2]}, {duplicated_pairs[index * 2 + 1]}")
+    return True
+
+
 if __name__ == '__main__':
     DEFAULT_IPS = ['10.9.20.10']
     DEFAULT_PORT = 8989
@@ -96,8 +145,18 @@ if __name__ == '__main__':
     api_base_url = f'http://{{ip_address}}:{cli.args.port}/api/6'
     ip_addresses = DEFAULT_IPS if cli.args.ip_addrs is None else cli.args.ip_addrs
 
+    fqdn_list = []
     for ip in ip_addresses:
         nginx = NginxKeyVals(username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
         fqdns = nginx.get_stream_keyvals(zone_name=ZONE_NAME)
+        check_for_duplicates(fqdns, ip)
         for target, port in sorted(fqdns.items(), key=lambda x: int(x[1])):
             print(f"{build_target_name(target)}:{port} <== {target}")
+            fqdn_list.append(target)
+
+    if cli.args.yaml is not None:
+        fqdn_list = sort_fqdns(fqdn_list)
+        with open(cli.args.yaml, "w") as YAML:
+            for fqdn in fqdn_list:
+                YAML.write(f"- {fqdn.lower()}\n")
+        print(f"Wrote FQDNs to YAML file: {cli.args.yaml}")
