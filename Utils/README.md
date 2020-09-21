@@ -12,13 +12,14 @@ _nginx_apis.py_
 
 ### Utilities ###
 _get_nginx_domains.py_ 
--  Using the Nginx APIs, the utility pulls the values + ports that are registered in the Nginx's KeyVal mapping store, and creates the corresponding FQDN.
+- Using the Nginx APIs, the utility pulls the values + ports that are registered in the Nginx's KeyVal mapping store, and creates the corresponding FQDN.
 - **Input**:  (add -h to the command line execution to see the parameter list)
    * REQUIRED Arguments: 
      * **None**
    * OPTIONAL Arguments:
      * **``-a IP_ADDRS [IP_ADDRS ...]`` or ``--ip_addrs IP_ADDRS [IP_ADDRS ...]``**  --> IP Addresses of target Nginx devices
-     * **```-p PORT```, -``--port PORT``**  --> Nginx API Server Port. Default=8989
+     * **``-p PORT`` or ``--port PORT``**  --> Nginx API Server Port. Default=8989
+     * **``-y YAML`` or ``--yaml YAML``**  --> Name of yaml file to write FQDN (for use in configuring through JJB)
      
 - **Output**:
   * **Format**: ``[subdomain name]:[port]`` <== ``[FQDN]``
@@ -26,7 +27,6 @@ _get_nginx_domains.py_
     * ``20.2_dev:20020 <== twentytwo.dev.mortgagedirector.com``
     * ``20.3_dev:20030 <== twentythree.dev.mortgagedirector.com``
     * ``20.5_dev:20050 <== twentyfive.dev.mortgagedirector.com``
-    
     
   ----------------------------------
   _nginx_services.py_
