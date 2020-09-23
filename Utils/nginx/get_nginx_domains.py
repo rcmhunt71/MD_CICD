@@ -31,7 +31,11 @@ def build_target_name(fqdn: str, delimiter: str = '.') -> str:
     :return: (str) Target INI section file name {version|name}_{env}
     """
     parts = fqdn.split(delimiter)
-    version, env = (parts[0], parts[1])
+    if len(parts) > 1:
+        version, env = (parts[0], parts[1])
+    else:
+        version = parts[0]
+        env = ''
     numerical_version = convert_version_to_number(version)
     return f"{numerical_version}_{env}"
 
@@ -135,7 +139,7 @@ def check_for_duplicates(fqdns_list: typing.List[str], device_ip: str) -> bool:
 
 
 if __name__ == '__main__':
-    DEFAULT_IPS = ['10.9.20.10']
+    DEFAULT_IPS = ['10.9.20.10', '10.9.20.70']
     DEFAULT_PORT = 8989
     ZONE_NAME = 'los'
     (user, pswd) = ('*' * 8, '*' * 8)
@@ -150,10 +154,15 @@ if __name__ == '__main__':
         nginx = NginxKeyVals(username=user, password=pswd, base_url=api_base_url.format(ip_address=ip))
         fqdns = nginx.get_stream_keyvals(zone_name=ZONE_NAME)
         check_for_duplicates(fqdns, ip)
-        for target, port in sorted(fqdns.items(), key=lambda x: int(x[1])):
-            print(f"{build_target_name(target)}:{port} <== {target}")
-            fqdn_list.append(target)
 
+        for target, port in sorted(fqdns.items(), key=lambda x: x[1]):
+
+            # Only add FQDNs that have a port defined.
+            if port is not None and port != '':
+                print(f"{build_target_name(target)}:{port} <== {target}")
+                fqdn_list.append(target)
+
+    # If requested to write to a YAML file.
     if cli.args.yaml is not None:
         fqdn_list = sort_fqdns(fqdn_list)
         with open(cli.args.yaml, "w") as YAML:
