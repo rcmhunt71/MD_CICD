@@ -1,0 +1,19 @@
+- project:
+    name: 
+      MD_Build_Job_definition_template
+
+    major_minor_version: 20.8
+    point_release:
+    - 0
+
+    DELPHI_COMPILER: 'C:\Program Files (x86)\Embarcadero\Studio\20.0\bin\DCC32.exe'
+    build_timeout: 10
+
+    views:
+      - 'MD Build Jobs'
+    
+    jobs:
+      - "Build-MD-{major_minor_version}.{point_release}"
+
+- view-template: !include los_view_template.yaml
+- job-template: !include: los_build_template.yaml

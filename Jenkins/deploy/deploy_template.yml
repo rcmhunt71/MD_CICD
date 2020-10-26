@@ -1,0 +1,112 @@
+- project:
+    name: MD_Deploy_Job_definition_template
+    views:
+      - 'MD Deploy Jobs'
+    jobs:
+      - "Deploy-MD"
+
+- view-template:
+    name: "MD Deploy Jobs"
+    description: "Mortgage Director Deployment Jobs  "
+    view-type: list
+    regex: 'Deploy-MD.*'
+
+- job-template:
+    name: "Deploy-MD"
+    allow_empty_variables: true
+    target_ini: !include: target_ini_location.yaml.inc
+
+    parameters:
+#     Requires Validating String Plugin
+      - validating-string:
+          name: version
+          default: "20.7.0.0"
+          description: "The LOS version to deploy: X.Y.Z.a"
+          regex: \d+\.\d+\.\d+\.\d+
+          msg: "Version number must be 4 digits: X.Y.Z.a"
+      - validating-string:
+          name: build
+          default: '00000'
+          description: "Specific build version: nnnnn - Use '00000' to use the latest build."
+          regex: \d\d\d\d\d
+          msg: "Build number must be a 5 digit number."
+      - choice:
+          name: environment
+          choices: !include: url_port_mapping.yaml.inc
+          description: "URL to use as an alias for the MD port."
+
+    scm:
+      - svn:
+          workspaceupdater: wipeworkspace
+          repos:
+          # Need clarification on the URL for SVN, based on how we want to store the builds in SVN
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/builds/{version}/{build}"
+             basedir: .
+             repo-depth: infinity
+             ignore-externals: true
+             viewvc-url: fisheye.pclender.com
+
+    project-type: freestyle
+    defaults: global
+    description: "Mortgage Director: Deploy to Environment"
+    disabled: False
+    display-name: "Mortgage Director: Deploy to Environment"
+    concurrent: True
+    quiet-period: 0
+    block-downstream: False
+    block-upstream: False
+    retry-count: 3
+
+    properties:
+      - authorization:
+          "LOS Development":
+             - job-build
+             - job-cancel
+             - job-read
+             - job-status
+             - job-workspace
+      - build-discarder:
+          days-to-keep: 3
+          num-to-keep: 3
+
+    wrappers:
+      - build-user-vars
+      - workspace-cleanup:
+          include:
+            - "*.*"
+          dirmatch: true
+      - env-script:
+          # ##################################################
+          # Requires the Jenkins Environment Script Plugin.
+          # Source and execute python script
+          # Would need to install python on the build server
+          # ##################################################
+          script-content: /home/rhunt/PycharmProjects/MD_CICD/src/Utils/build_to_text.py "$version"
+          script-type: unix-script
+      - timestamps
+
+    builders:
+      - shell: |
+          echo "Full Name: $BUILD_USER"
+          echo "First Name: $BUILD_USER_FIRST_NAME"
+          echo "Last Name: $BUILD_USER_LAST_NAME"
+          echo "User ID: $BUILD_USER_ID"
+          echo "Version Text: $VERSION_TEXT"
+      - shell: |
+          python /home/rhunt/PycharmProjects/MD_CICD/src/Utils/update_target_ini.py "$target_ini" add env
+
+    publishers:
+      - jira
+      - email-ext:
+          content-type: default
+          subject: '$DEFAULT_SUBJECT'
+          body: 'DEPLOYMENT: ${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}.'
+          recipients: !include: email_recipients.yaml.inc
+          reply-to: '$DEFAULT_REPLYTO'
+          attach-build-log: true
+          compress-log: true
+          presend-script: '$DEFAULT_PRESEND_SCRIPT'
+          postsend-script: '$DEFAULT_POSTEND_SCRIPT'
+          failure: true
+          success: true
+          prebuild: true
