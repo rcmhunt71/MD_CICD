@@ -1,4 +1,0 @@
-- Staging
-- Maintenance
-- QA
-- Dev
