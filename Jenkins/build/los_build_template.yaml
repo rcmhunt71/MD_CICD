@@ -14,6 +14,7 @@
              - credentials-id: "jenkins"
 
     project-type: freestyle
+    workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_minor_version}.{point_release}"
     defaults: global
     description: "Mortgage Director - Build - {major_minor_version}.{point_release}"
     disabled: False
