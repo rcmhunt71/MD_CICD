@@ -1,0 +1,19 @@
+<service>
+  <id>jenkins_remote_node_agent</id>
+  <name>Jenkins Remote Node Agent</name>
+  <description>This service runs Jenkins remote node agent.</description>
+  <env name="JAVA_HOME" value="C:\Program Files (x86)\Jenkins\jre" />
+  <executable>C:\Program Files (x86)\Jenkins\jre\bin\java</executable>
+  <arguments>-jar %BASE%\agent.jar -jnlpUrl http://10.9.20.145:8080/computer/LOSBuildServer/slave-agent.jnlp -secret d9b6e50eb3a5ed574cb890dfd2caed6f1e59c3561b0af1549e21fb61c9018686 -workDir "T:\JenkinsData\Workspace\JenkinsCICDWkspc"</arguments>
+  <startmode>Automatic</startmode>
+  <preshutdown>true</preshutdown>
+  <preshutdownTimeout>1 min</preshutdownTimeout>
+  <onfailure action="restart" delay="10 sec"/>
+  <log mode="roll"></log>
+  <serviceaccount>
+    <username>DEVELOPMENT.PCLENDER.LOCAL\jenkins</username>
+    <password>***********</password>
+    <allowservicelogon>true</allowservicelogon>
+  </serviceaccount>
+  <workingdirectory>%BASE%</workingdirectory>
+</service>

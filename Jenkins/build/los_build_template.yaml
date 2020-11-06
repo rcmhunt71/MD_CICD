@@ -1,17 +1,17 @@
     name: "Build-MD-{major_minor_version}.{point_release}"
-    scm:
-     - svn:
-         workspaceupdater: wipeworkspace
-         repos:
-          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/Maintenance/{major_minor_version}"
-             credentials-id: "jenkins"
-             basedir: .
-             repo-depth: infinity
-             ignore-externals: true
-             viewvc-url: https://fisheye.pclender.com
-             additional-credentials:
-             - realm: "DEVELOPMENT.PCLENDER.LOCAL"
-             - credentials-id: "jenkins"
+#    scm:
+#      - svn:
+#          workspaceupdater: wipeworkspace
+#          repos:
+#          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/Maintenance/{major_minor_version}"
+#             credentials-id: "jenkins"
+#             basedir: .
+#             repo-depth: infinity
+#             ignore-externals: true
+#             viewvc-url: https://fisheye.pclender.com
+#             additional-credentials:
+#             - realm: "DEVELOPMENT.PCLENDER.LOCAL"
+#             - credentials-id: "jenkins"
 
     project-type: freestyle
     workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_minor_version}.{point_release}"
@@ -59,19 +59,48 @@
           write-description: "Build timed out with no activity after {build_timeout} minutes"
 
     builders:
-      - shell: |
-          echo "Full Name: $BUILD_USER"
-          echo "First Name: $BUILD_USER_FIRST_NAME"
-          echo "Last Name: $BUILD_USER_LAST_NAME"
-          echo "User ID: $BUILD_USER_ID"
-          exit 0
+      - batch: |
+          echo "Full Name: %BUILD_USER%"
+          echo "First Name: %BUILD_USER_FIRST_NAME%"
+          echo "Last Name: %BUILD_USER_LAST_NAME%"
+          echo "User ID: %BUILD_USER_ID%"
+          echo "Workspace: %WORKSPACE%"
 
       - batch: "%WORKSPACE%\\BuildTools\\ResourceFileCreator.exe"
-      - batch: "{DELPHI_COMPILER} %WORKSPACE%\\components\\D10\\TMS Component Pack\\tmsdXE9group.grouproj"
-      - batch: "{DELPHI_COMPILER} %WORKSPACE%\\Server\\PCLServer.groupproj /p:config=Release"
-      - batch: "{DELPHI_COMPILER} %WORKSPACE%\\Client\\PCLServer.groupproj /p:config=Release"
-      - batch: "{DELPHI_COMPILER} %WORKSPACE%\\PRICEENG\\PRICENG.groupproj /p:config=Release"
-      - batch: "{DELPHI_COMPILER} %WORKSPACE%\\Tools\\PCLServerTools.groupproj /p:config=Release"
+
+#     CONFIGURED USING:
+#          https://chapmanworld.com/2015/01/18/use-radstudio-with-jenkins-no-plugin/
+#          http://www.devsuperpage.com/search/Articles.aspx?hl=en&G=2&ArtID=111742   (BDSLIB)
+      - batch: |
+            call "{DELPHI_BIN_DIR}\rsvars.bat"
+            set BDSLIB=%BDS%\lib
+            cd %WORKSPACE%
+            msbuild ".\components\D10\TMS Component Pack\tmsdXE9group.groupproj"
+
+      - batch: |
+            call "{DELPHI_BIN_DIR}\rsvars.bat"
+            set BDSLIB=%BDS%\lib
+            cd %WORKSPACE%
+            msbuild .\Server\PCLServer.groupproj /p:config=Release
+
+      - batch: |
+            call "{DELPHI_BIN_DIR}\rsvars.bat"
+            set BDSLIB=%BDS%\lib
+            cd %WORKSPACE%
+            msbuild .\Client\PCLClient.groupproj /p:config=Release
+
+      - batch: |
+            call "{DELPHI_BIN_DIR}\rsvars.bat"
+            set BDSLIB=%BDS%\lib
+            cd %WORKSPACE%
+            msbuild ".\PRICEENG\PRICEENG.groupproj" "/p:config=Release"
+
+      - batch: |
+            call "{DELPHI_BIN_DIR}\rsvars.bat"
+            set BDSLIB=%BDS%\lib
+            cd %WORKSPACE%
+            msbuild .\Tools\PCLServerTools.groupproj /p:config=Release
+
       - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /dev_{major_minor_version}"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\ThinIHM.exe"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\PCLLoader.exe"

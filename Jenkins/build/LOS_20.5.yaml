@@ -2,13 +2,13 @@
     name: 
       MD_Build_Job_definition_template
 
-    major_minor_version: 20.6
+    major_minor_version: 20.05
     point_release:
     - 3
     - 4
-    - 5
 
-    DELPHI_COMPILER: 'C:\Program Files (x86)\Embarcadero\Studio\17.0\bin\DCC32.exe'
+    DELPHI_LOCATION: "C:\\Program Files (x86)\\Embarcadero\\Studio\\17.0"
+    DELPHI_BIN_DIR:  "{DELPHI_LOCATION}\\bin"
     build_timeout: 10
 
     views:
