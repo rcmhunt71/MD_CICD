@@ -8,7 +8,8 @@
     - 4
     - 5
 
-    DELPHI_COMPILER: 'C:\Program Files (x86)\Embarcadero\Studio\17.0\bin\DCC32.exe'
+    DELPHI_LOCATION: "C:\\Program Files (x86)\\Embarcadero\\Studio\\17.0"
+    DELPHI_BIN_DIR:  "{DELPHI_LOCATION}\\bin"
     build_timeout: 10
 
     views:

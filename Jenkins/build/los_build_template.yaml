@@ -1,17 +1,17 @@
     name: "Build-MD-{major_minor_version}.{point_release}"
-#    scm:
-#      - svn:
-#          workspaceupdater: wipeworkspace
-#          repos:
-#          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/Maintenance/{major_minor_version}"
-#             credentials-id: "jenkins"
-#             basedir: .
-#             repo-depth: infinity
-#             ignore-externals: true
-#             viewvc-url: https://fisheye.pclender.com
-#             additional-credentials:
-#             - realm: "DEVELOPMENT.PCLENDER.LOCAL"
-#             - credentials-id: "jenkins"
+    scm:
+      - svn:
+          workspaceupdater: wipeworkspace
+          repos:
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/Maintenance/{major_minor_version}"
+             credentials-id: "jenkins"
+             basedir: .
+             repo-depth: infinity
+             ignore-externals: true
+             viewvc-url: https://fisheye.pclender.com
+             additional-credentials:
+             - realm: "DEVELOPMENT.PCLENDER.LOCAL"
+             - credentials-id: "jenkins"
 
     project-type: freestyle
     workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_minor_version}.{point_release}"
@@ -75,13 +75,13 @@
             call "{DELPHI_BIN_DIR}\rsvars.bat"
             set BDSLIB=%BDS%\lib
             cd %WORKSPACE%
-            msbuild ".\components\D10\TMS Component Pack\tmsdXE9group.groupproj"
+            msbuild "%WORKSPACE%\components\D10\TMS Component Pack\tmsdXE9group.groupproj"
 
       - batch: |
             call "{DELPHI_BIN_DIR}\rsvars.bat"
             set BDSLIB=%BDS%\lib
             cd %WORKSPACE%
-            msbuild .\Server\PCLServer.groupproj /p:config=Release
+            msbuild %WORKSPACE%\Server\PCLServer.groupproj /p:config=Release
 
       - batch: |
             call "{DELPHI_BIN_DIR}\rsvars.bat"
@@ -93,7 +93,7 @@
             call "{DELPHI_BIN_DIR}\rsvars.bat"
             set BDSLIB=%BDS%\lib
             cd %WORKSPACE%
-            msbuild ".\PRICEENG\PRICEENG.groupproj" "/p:config=Release"
+            msbuild ".\WebService\PRICENG\PRICENG.groupproj" "/p:config=Release"
 
       - batch: |
             call "{DELPHI_BIN_DIR}\rsvars.bat"
@@ -112,13 +112,13 @@
       - email-ext:
           content-type: default
           subject: '$DEFAULT_SUBJECT'
-          body: '${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} ${{BUILD_CAUSE}}.'
+          body: '${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} - ${{BUILD_CAUSE}}.'
           recipients: !include: email_recipients.yaml.inc
           reply-to: '$DEFAULT_REPLYTO'
           attach-build-log: true
           compress-log: true
           presend-script: '$DEFAULT_PRESEND_SCRIPT'
-          postsend-script: '$DEFAULT_POSTEND_SCRIPT'
+          postsend-script: '$DEFAULT_POSTSEND_SCRIPT'
           failure: true
           success: true
           prebuild: true
