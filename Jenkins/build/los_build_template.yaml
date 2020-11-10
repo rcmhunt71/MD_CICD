@@ -101,7 +101,7 @@
             cd %WORKSPACE%
             msbuild .\Tools\PCLServerTools.groupproj /p:config=Release
 
-      - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /dev_{major_minor_version}"
+      - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /{major_minor_version}"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\ThinIHM.exe"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\PCLLoader.exe"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\IHMADO.dll"
