@@ -2,15 +2,13 @@
     name: 
       MD_Build_Job_definition_template
 
-    branch: Maintenance
-    major_minor_version: 20.05
-    point_release:
-    - ".3"
-    - ".4"
+    branch: "Staging"
+    major_minor_version: ''
+    point_release: ''
 
     build_timeout: 10
 
-    DELPHI_LOCATION: "C:\\Program Files (x86)\\Embarcadero\\Studio\\17.0"
+    DELPHI_LOCATION: "C:\\Program Files (x86)\\Embarcadero\\Studio\\20.0"
     DELPHI_BIN_DIR:  "{DELPHI_LOCATION}\\bin"
 
     views:
@@ -18,7 +16,7 @@
     
     jobs:
       - "Build-MD-{branch}-{major_minor_version}{point_release}":
-           svn_url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{branch}/{major_minor_version}"
+          svn_url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{branch}"
 
 - view-template: !include: los_view_template.yaml
 - job-template: !include: los_build_template.yaml
