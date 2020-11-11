@@ -16,20 +16,32 @@
     allow_empty_variables: true
     target_ini: !include: target_ini_location.yaml.inc
 
+
+    branch: 'Maintenance'
+    version: '20.7'
+    build: ''
+
     parameters:
 #     Requires Validating String Plugin
+      - choice:
+         # Enables suppoprting different root branches (maintenance, personal, etc). 
+         # Due to inconsistencies in non-maintenance branches, this only supports the maintenance branch for now.
+         # e.g.: maintenance\{major}.{minor}@revision
+          name: Branch
+          choices: !include: branches.yaml.inc
+          default: '{branch}'
       - validating-string:
-          name: version
-          default: "20.7.0.0"
-          description: "The LOS version to deploy: X.Y.Z.a"
-          regex: \d+\.\d+\.\d+\.\d+
-          msg: "Version number must be 4 digits: X.Y.Z.a"
+          name: Version
+          default: '{version}'
+          description: "The LOS version to deploy: XX.YY"
+          regex: \d+\.\d+
+          msg: "Version number must be 2 sets of digits: XX.YY"
       - validating-string:
-          name: build
-          default: '00000'
-          description: "Specific build version: nnnnn - Use '00000' to use the latest build."
-          regex: \d\d\d\d\d
-          msg: "Build number must be a 5 digit number."
+          name: Build
+          default: '{build}'
+          description: "Specific build version: @ddddd - Leave blank to use the latest build."
+          regex: \@\d+
+          msg: "Prefix weith @ and the build number must be a positive inetger."
       - choice:
           name: environment
           choices: !include: url_port_mapping.yaml.inc
@@ -40,7 +52,7 @@
           workspaceupdater: wipeworkspace
           repos:
           # Need clarification on the URL for SVN, based on how we want to store the builds in SVN
-          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/builds/{version}/{build}"
+          -  url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{branch}/{version}{build}"
              basedir: .
              repo-depth: infinity
              ignore-externals: true
@@ -56,6 +68,7 @@
     block-downstream: False
     block-upstream: False
     retry-count: 3
+    node: LOS
 
     properties:
       - authorization:
@@ -106,7 +119,7 @@
           attach-build-log: true
           compress-log: true
           presend-script: '$DEFAULT_PRESEND_SCRIPT'
-          postsend-script: '$DEFAULT_POSTEND_SCRIPT'
+          postsend-script: '$DEFAULT_POSTSEND_SCRIPT'
           failure: true
           success: true
           prebuild: true
