@@ -13,7 +13,7 @@
              - credentials-id: "jenkins"
 
     project-type: freestyle
-    workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_version}.{minor_version}"
+    workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{wkspc_dir}"
     defaults: global
     description: "{title}\n"
     disabled: False

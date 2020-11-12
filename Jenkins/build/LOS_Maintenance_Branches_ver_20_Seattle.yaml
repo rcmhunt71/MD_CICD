@@ -23,6 +23,7 @@
       - "Build-MD-{branch}-{major_version}.{minor_version}":
           svn_url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{branch}/{major_version}.{minor_version}"
           title: "Mortgage Director - Build - {branch} - {major_version}.{minor_version} - {DELPHI_NAME}"
+          wkspc_dir: "{major_version}.{minor_version}"
 
 - view-template: !include: ./templates/los_view_template.yaml
 - job-template: !include: ./templates/los_build_template.yaml
