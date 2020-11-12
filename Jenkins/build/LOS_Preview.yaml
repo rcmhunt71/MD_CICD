@@ -3,11 +3,12 @@
       MD_Build_Job_definition_template
 
     branch: "Preview"
-    major_minor_version: ''
-    point_release: ''
+    major_version: ''
+    minor_version: ''
 
     build_timeout: 10
 
+    DELPHI_NAME: "RIO"
     DELPHI_LOCATION: "C:\\Program Files (x86)\\Embarcadero\\Studio\\20.0"
     DELPHI_BIN_DIR:  "{DELPHI_LOCATION}\\bin"
 
@@ -15,8 +16,9 @@
       - 'MD Build Jobs'
 
     jobs:
-      - "Build-MD-{branch}-{major_minor_version}{point_release}":
+      - "Build-MD-{branch}-{major_version}.{minor_version}":
            svn_url: "svn://pcldevsvn02.development.pclender.local/LOS/{branch}"
+           title: "Mortgage Director - Build - {branch} - {DELPHI_NAME}"
 
 - view-template: !include: los_view_template.yaml
 - job-template: !include: los_build_template.yaml

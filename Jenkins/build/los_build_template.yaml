@@ -1,4 +1,4 @@
-    name: "Build-MD-{branch}-{major_minor_version}{point_release}"
+    name: "Build-MD-{branch}-{major_version}.{minor_version}"
     scm:
       - svn:
           workspaceupdater: wipeworkspace
@@ -13,11 +13,11 @@
              - credentials-id: "jenkins"
 
     project-type: freestyle
-    workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_minor_version}{point_release}"
+    workspace: "T:\\JenkinsData\\Workspace\\JenkinsCICDWkspc\\{major_version}.{minor_version}"
     defaults: global
-    description: "Mortgage Director - Build - {branch} - {major_minor_version}{point_release}\n"
+    description: "{title}\n"
     disabled: False
-    display-name: "Mortgage Director - Build - {branch} - {major_minor_version}{point_release}"
+    display-name: "{title}"
     concurrent: False
     quiet-period: 0
     node: LOS 
@@ -100,7 +100,8 @@
             cd %WORKSPACE%
             msbuild .\Tools\PCLServerTools.groupproj /p:config=Release
 
-      - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /{major_minor_version}"
+      # Service Deployer version arg will be wrong for staging and preview, but we are replacing service deployer, so this will be fixed by that change.
+      - batch: "%WORKSPACE%\\BuildTools\\ServiceDeployer.exe /{major_version}.{minor_version}"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\ThinIHM.exe"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\PCLLoader.exe"
       - batch: "%WORKSPACE%\\Tools\\authenticode\\signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f %WORKSPACE%\\Tools\\authenticode\\PCLender.pfx %WORKSPACE%\\build\\IHMADO.dll"
