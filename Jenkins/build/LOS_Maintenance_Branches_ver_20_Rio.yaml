@@ -19,7 +19,7 @@
     jobs:
       - "Build-MD-{branch}-{major_version}.{minor_version}":
           svn_url: "svn://pcldevsvn02.development.pclender.local/LOS/branches/{branch}/{major_version}.{minor_version}"
-          title: "Mortgage Director - Build - {branch} - {major_version}.{minor_version} -{DELPHI_NAME}"
+          title: "Mortgage Director - Build - {branch} - {major_version}.{minor_version} - {DELPHI_NAME}"
 
 - view-template: !include: los_view_template.yaml
 - job-template: !include: los_build_template.yaml
