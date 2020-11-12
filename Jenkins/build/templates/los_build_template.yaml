@@ -113,7 +113,7 @@
           content-type: default
           subject: '$DEFAULT_SUBJECT'
           body: '${{PROJECT_DISPLAY_NAME}} for SVN Revision ${{ENV,var="SVN_REVISION"}} - ${{BUILD_CAUSE}}.'
-          recipients: !include: email_recipients.yaml.inc
+          recipients: !include: ./templates/email_recipients.yaml.inc
           reply-to: '$DEFAULT_REPLYTO'
           attach-build-log: true
           compress-log: true
