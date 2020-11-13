@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import re
@@ -16,8 +16,8 @@ class CliArgs:
                                  help="IP Addresses of target Nginx devices")
         self.parser.add_argument("-p", "--port", default=DEFAULT_PORT, type=int,
                                  help=f"Nginx API Server Port. DEFAULT: {DEFAULT_PORT}")
-        self.parser.add_argument("-y", '--yaml', default=None, type=str,
-                                 help=f"Name of yaml file to write FQDN (for use in configuring through JJB)")
+        self.parser.add_argument("-y", "--yaml", default=None, type=str,
+                                 help="Name of yaml file to write FQDN (for use in configuring through JJB)")
         self.args = self.parser.parse_args()
 
 
