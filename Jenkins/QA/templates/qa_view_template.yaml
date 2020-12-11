@@ -1,0 +1,4 @@
+ name: "QA Jobs - JJB"
+ description: "QA Jobs and Automation "
+ view-type: list
+ regex: '(PRICE API|OM UI).*'

@@ -1,0 +1,63 @@
+    name: "PRICE API Regression test"
+    project-type: freestyle
+    scm:
+      - git:
+          url: 'git@github.com:EllieSky/PRICE_Regression.git'
+          credentials-id: 54f14d29-9ab9-4aad-a810-58db63522840
+          branches: 
+            - origin/master
+          basedir: .
+          ignore-externals: true
+          repo-depth: infinity
+          timeout: 5
+          wipeworkspace: true
+
+    block-downstream: False
+    block-upstream: False
+    defaults: global
+    description: "Test autoamstionm for PRICE API\n"
+    disabled: False
+    display-name: "PRICE API Regression (JJB)"
+    concurrent: False
+    node: QA_Remote_Node
+    quiet-period: 0
+    retry-count: 3
+    
+    wrappers:
+       - credentials-binding:
+         - text:
+             credential-id: PRICE_PEPPER
+             variable: PRICE_PEPPER
+       - timestamps
+
+    builders:
+      - shell: |
+          top -b -n 1 | head -n 10 && hostname
+          rm -rf "build/${{JOB_BASE_NAME}}/junit-reports"
+          rm -rf generatedJUnitFiles
+
+          python3 -m venv venv
+          . ./venv/bin/activate
+
+          cd .. 
+          if [ ! -d ./PriceSDK ]; then
+              git clone https://github.com/rcmhunt71/PriceSDK.git
+          fi
+
+          cd PriceSDK
+          git pull
+          python setup.py install
+
+          cd "${{WORKSPACE}}"
+          pip install -r requirements.txt
+          python -m xmlrunner discover -s tests -o "build/${{JOB_BASE_NAME}}/junit-reports"
+
+    publishers:
+      - archive:
+          artifacts: 'test_output/**/*'
+      - xunit:
+          types:
+            - junit:
+                 pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
+                 deleteoutput: true
+      - jira

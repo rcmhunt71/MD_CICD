@@ -1,0 +1,14 @@
+- project:
+    name: 
+      MD_QA_PRICE_API_regression_definition_template
+
+    build_timeout: 10
+
+    views:
+      - 'QA Jobs - JJB'
+    
+    jobs:
+      - "PRICE API Regression test"
+
+- view-template: !include: ./templates/qa_view_template.yaml
+- job-template: !include: ./templates/qa_price_template.yaml
