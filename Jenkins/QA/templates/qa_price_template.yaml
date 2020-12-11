@@ -15,7 +15,7 @@
     block-downstream: False
     block-upstream: False
     defaults: global
-    description: "Test autoamstionm for PRICE API\n"
+    description: "Test automation for PRICE API\n"
     disabled: False
     display-name: "PRICE API Regression (JJB)"
     concurrent: False
