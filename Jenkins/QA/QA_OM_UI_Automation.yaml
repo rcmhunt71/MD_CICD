@@ -1,0 +1,18 @@
+- view-template: !include: ./templates/qa_view_template.yaml
+- job-template: !include: ./templates/qa_om_automation_template.yaml
+- job-template: !include: ./templates/qa_om_pretest_template.yaml
+
+- job-group:
+    name: 'OM UI Tests'
+    jobs: 
+        - 'OM_UI_Pretest_JJB'
+        - 'OM_UI_Automation_JJB'
+
+- project:
+    name: 'MD_OM_UI_regression_definition_template'
+    # build_timeout: 10
+    views: 
+        - 'QA Jobs - JJB'   
+    jobs: 
+        - 'OM UI Tests'
+
