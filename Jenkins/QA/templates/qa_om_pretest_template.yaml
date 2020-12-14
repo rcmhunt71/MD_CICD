@@ -6,13 +6,10 @@
           url: 'git@github.com:EllieSky/MD_UI_Automation.git'
           credentials-id: 54f14d29-9ab9-4aad-a810-58db63522840
           branches: 
-            - origin/master
-          basedir: .
+            - "*/master"
           choosing-strategy: inverse
           ignore-externals: true
           repo-depth: infinity
-          timeout: 5
-          wipeworkspace: true
 
     block-downstream: False
     block-upstream: False
@@ -38,12 +35,16 @@
           rm -rf "build/${{JOB_BASE_NAME}}/junit-reports"
           rm -rf test_output
           rm -rf generatedJUnitFiles
+
           python3 -m venv venv
           . ./venv/bin/activate
           pip install -r requirements.txt 
+
           google-chrome --version
+
           export HEADLESS=True
           python -m xmlrunner discover -s tests -o "build/${{JOB_BASE_NAME}}/junit-reports"
+
           #TZ=America/Los_Angeles
           #/15 6-20/1 * * 1-5
 
@@ -55,4 +56,6 @@
             - junit:
                  pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*"
                  deleteoutput: true
+                 stoponerror: false
+                 requireupdate: false
 
