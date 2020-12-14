@@ -5,11 +5,9 @@
           url: 'git@github.com:EllieSky/PRICE_Regression.git'
           credentials-id: 54f14d29-9ab9-4aad-a810-58db63522840
           branches: 
-            - origin/master
-          basedir: .
+            - "*/master"
           ignore-externals: true
           repo-depth: infinity
-          timeout: 5
           wipeworkspace: true
 
     block-downstream: False
@@ -60,4 +58,5 @@
             - junit:
                  pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
                  deleteoutput: true
-      - jira
+                 stoponerror: false
+                 requireupdate: false
