@@ -16,7 +16,7 @@
     concurrent: False
     defaults: global
     description: "Test automation for Originate Mortgage (OM) web application\n"
-    disabled: False
+    disabled: true
     display-name: "OM UI Prestest (JJB)"
     node: QA_Remote_Node
     quiet-period: 0
