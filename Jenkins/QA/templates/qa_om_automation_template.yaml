@@ -47,10 +47,13 @@
     publishers:
       - archive:
           artifacts: 'test_output/**/*'
-      - xunit:
-          types:
-            - junit:
-                 pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
-                 deleteoutput: true
-                 stoponerror: false
-                 requireupdate: false
+      #- xunit:
+      #    types:
+      #      - junit:
+      #           pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
+      #          deleteoutput: true
+      #           stoponerror: false
+      #           requireupdate: false
+      - junit:
+          results: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
+          allow-empty-results: true
