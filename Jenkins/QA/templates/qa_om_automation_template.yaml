@@ -6,7 +6,7 @@
           url: 'git@github.com:EllieSky/PRICE_Regression.git'
           credentials-id: 54f14d29-9ab9-4aad-a810-58db63522840
           branches: 
-            - "*/test_fixes"
+            - "*/master"
           ignore-externals: true
           repo-depth: infinity
           wipeworkspace: false
