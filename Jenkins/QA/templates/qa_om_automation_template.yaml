@@ -3,7 +3,7 @@
     project-type: freestyle
     scm:
       - git:
-          url: 'git@github.com:EllieSky/PRICE_Regression.git'
+          url: 'git@github.com:EllieSky/MD_UI_Automation.git'
           credentials-id: 54f14d29-9ab9-4aad-a810-58db63522840
           branches: 
             - "*/master"
@@ -31,7 +31,7 @@
     builders:
       - shell: |
           top -b -n 1 | head -n 10 && hostname
-          rm -rf "build/${{JOB_BASE_NAME}}/junit-reports"
+          rm -rf "build/${{JOB_BASE_NAME}}/junit-reports/*"
           rm -rf test_output
           rm -rf generatedJUnitFiles
 
