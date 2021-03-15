@@ -72,10 +72,7 @@
           results: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
           allow-empty-results: true
 
-      - raw:
-          xml: |
-            <hudson.tasks.Mailer plugin="mailer@1.32.1">
-              <recipients>ellie.yampolskaya@fiserv.com,dmitry.arkhipenko@fiserv.com</recipients>
-              <dontNotifyEveryUnstableBuild>false</dontNotifyEveryUnstableBuild>
-              <sendToIndividuals>false</sendToIndividuals>
-            </hudson.tasks.Mailer>
+      - email:
+          recipients: ellie.yampolskaya@fiserv.com,dmitry.arkhipenko@fiserv.com
+          notify-every-unstable-build: false
+          send-to-individuals: false
