@@ -21,9 +21,23 @@
     node: QA_Remote_Node
     quiet-period: 0
     retry-count: 3
-    
+
+    properties:
+      - raw:
+          xml: |
+            <hudson.security.AuthorizationMatrixProperty>
+              <inheritanceStrategy class="org.jenkinsci.plugins.matrixauth.inheritance.InheritParentStrategy"/>
+              <permission>com.cloudbees.plugins.credentials.CredentialsProvider.View:authenticated</permission>
+              <permission>hudson.model.Item.Build:authenticated</permission>
+              <permission>hudson.model.Item.Read:authenticated</permission>
+            </hudson.security.AuthorizationMatrixProperty>
+
     wrappers:
-       - timestamps
+      - timestamps
+      - timeout:
+          timeout: 10
+          type: no-activity
+          abort: true     
 
     triggers:
       - timed: "TZ=US/Pacific\nH 10,20 * * 1-5"
@@ -57,3 +71,8 @@
       - junit:
           results: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
           allow-empty-results: true
+
+      - email:
+          recipients: ellie.yampolskaya@fiserv.com,dmitry.arkhipenko@fiserv.com
+          notify-every-unstable-build: false
+          send-to-individuals: false
