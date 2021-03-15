@@ -32,6 +32,12 @@
               <permission>hudson.model.Item.Read:authenticated</permission>
             </hudson.security.AuthorizationMatrixProperty>
 
+    logrotate:
+      daysToKeep: 30
+      numToKeep: -1
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
+
     wrappers:
       - timestamps
       - timeout:
