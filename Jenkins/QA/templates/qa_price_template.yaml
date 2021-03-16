@@ -50,8 +50,8 @@
       - shell: |
           top -b -n 1 | head -n 10 && hostname
 
-          rm -rf build/${JOB_BASE_NAME}/junit-reports/*
-          rm -rf build/${JOB_BASE_NAME}/test_output
+          rm -rf "build/${JOB_BASE_NAME}/junit-reports/*"
+          rm -rf "build/${JOB_BASE_NAME}/test_output"
           rm -rf generatedJUnitFiles
 
           python3 -m venv venv
