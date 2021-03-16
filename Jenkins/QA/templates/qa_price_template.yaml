@@ -22,16 +22,36 @@
     retry-count: 3
     
     wrappers:
-       - credentials-binding:
-         - text:
+      - credentials-binding:
+        - text:
              credential-id: PRICE_PEPPER
              variable: PRICE_PEPPER
-       - timestamps
+      - timestamps
+      - timeout:
+          timeout: 10
+          type: no-activity
+          abort: true
+
+    triggers:
+      - timed: "TZ=US/Pacific\nH 10,20 * * 1-5"
+    
+    logrotate:
+      daysToKeep: 30
+      numToKeep: -1
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
 
     builders:
+      - copyartifact:
+          project: PRICE_API_Regression(JJB)
+          which-build: last-completed
+          filter: "env_*.ini"
+
       - shell: |
           top -b -n 1 | head -n 10 && hostname
-          rm -rf "build/${{JOB_BASE_NAME}}/junit-reports"
+
+          rm -rf build/${JOB_BASE_NAME}/junit-reports/*
+          rm -rf build/${JOB_BASE_NAME}/test_output
           rm -rf generatedJUnitFiles
 
           python3 -m venv venv
@@ -39,24 +59,44 @@
 
           cd .. 
           if [ ! -d ./PriceSDK ]; then
-              git clone https://github.com/rcmhunt71/PriceSDK.git
+             git clone https://github.com/rcmhunt71/PriceSDK.git
           fi
 
           cd PriceSDK
           git pull
           python setup.py install
 
-          cd "${{WORKSPACE}}"
+          cd "${WORKSPACE}"
+
           pip install -r requirements.txt
-          python -m xmlrunner discover -s tests -o "build/${{JOB_BASE_NAME}}/junit-reports"
+
+          echo ">>> Getting env_setup >>>"
+          python env_setup.py
+
+          echo ">>> Starting API tests >>>" 
+          #python -m xmlrunner discover -s tests -o "build/${JOB_BASE_NAME}/junit-reports"
+          nose2 -v tests --junit-xml-path "build/${JOB_BASE_NAME}/junit-reports/xml-report.xml"
+
+          echo ">>> Pushing latest loans/users data to GitHub >>>" 
+          git add 'env_loans.ini' 'env_users.ini'
+          git commit -m "Triggered Build: ${BUILD_NUMBER}"
+          git push git@github.com:EllieSky/PRICE_Regression.git HEAD:standby -f
 
     publishers:
       - archive:
           artifacts: 'test_output/**/*'
-      - xunit:
-          types:
-            - junit:
-                 pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
-                 deleteoutput: true
-                 stoponerror: false
-                 requireupdate: false
+      #- xunit:
+      #   types:
+      #     - junit:
+      #          pattern: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
+      #          deleteoutput: true
+      #          stoponerror: false
+      #          requireupdate: false
+      - junit:
+          results: "build/${{JOB_BASE_NAME}}/junit-reports/**/*" 
+          allow-empty-results: true
+  
+      - email:
+          recipients: ellie.yampolskaya@fiserv.com,dmitry.arkhipenko@fiserv.com
+          notify-every-unstable-build: false
+          send-to-individuals: false
